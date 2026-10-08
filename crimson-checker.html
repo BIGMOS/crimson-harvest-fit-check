@@ -194,6 +194,8 @@ function stats(F){const g=F.get,S=F.ship;const st={};
  if(f.pg>f.pgMax+0.005)st.fitProblems.push(`Powergrid over by ${(f.pg-f.pgMax).toFixed(1)} MW`);
  if(f.cal>f.calMax)st.fitProblems.push(`Calibration over by ${f.cal-f.calMax}`);
  for(const k of['lo','mid','hi','rig'])if(f.used[k]>f.slots[k])st.fitProblems.push(`${f.used[k]} ${ {lo:'low',mid:'mid',hi:'high',rig:'rig'}[k]} slot items but the hull has ${f.slots[k]}`);
+ {const cnt={};for(const m of F.modules)cnt[m.grp]=(cnt[m.grp]||0)+1;const seen=new Set();
+  for(const m of F.modules){const mx=m.base[1544];if(mx&&cnt[m.grp]>mx&&!seen.has(m.grp)){seen.add(m.grp);st.fitProblems.push(`${cnt[m.grp]} × ${GR[m.grp][0]} fitted but only ${mx} allowed`);}}}
  if(f.tur>f.turMax)st.fitProblems.push(`${f.tur} turrets but ${f.turMax} turret hardpoints`);
  if(f.lau>f.lauMax)st.fitProblems.push(`${f.lau} launchers but ${f.lauMax} launcher hardpoints`);
  // dps
