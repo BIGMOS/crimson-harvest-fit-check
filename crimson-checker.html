@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Crimson Harvest Fit Check</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--fg:#e6e8ee;--mut:#8b91a1;--acc:#d33c3c;--ok:#3cc47c;--warn:#e0b030;--bad:#e05050;--line:#2a2f3a}
+*{box-sizing:border-box}body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,Segoe UI,sans-serif;max-width:1100px;margin:auto}
+h1{color:var(--acc);margin:.2em 0}h2{font-size:15px;margin:0 0 8px;color:var(--acc)}h3{font-size:13px;margin:10px 0 4px;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin:12px 0}
+textarea{width:100%;height:230px;background:#0b0d11;color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:12px Consolas,monospace}
+button,select{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:8px 14px;font-weight:600;cursor:pointer}select{background:#0b0d11;border:1px solid var(--line)}
+button.sec{background:#2a2f3a}button:disabled{opacity:.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:600}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.v{font-size:18px;font-weight:700;padding:10px;border-radius:6px;margin-top:8px}
+.ok{background:#12301f;color:var(--ok)}.warn{background:#3a3010;color:var(--warn)}.bad{background:#3a1515;color:var(--bad)}
+.mut{color:var(--mut);font-size:12px}ul{margin:4px 0;padding-left:20px}
+.stat{background:#0b0d11;border:1px solid var(--line);border-radius:6px;padding:8px}.stat b{font-size:17px}
+.bar{height:8px;background:#2a2f3a;border-radius:4px;overflow:hidden;margin-bottom:4px}.bar i{display:block;height:100%;background:var(--ok)}
+.bar i.warn{background:var(--warn)}.bar i.bad{background:var(--bad)}
+label.m{display:flex;gap:6px;align-items:center;font-size:12px}
+.row{margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.wtxt{color:var(--warn)}.btxt{color:var(--bad)}
+@media(max-width:600px){body{padding:12px}}
+</style></head><body>
+<h1>Crimson Harvest Fit Check</h1>
+<div class="mut">Event: 6 Oct – 3 Nov 2026 · Blood Raiders invading Pochven · Sites: Crimson Gauntlet (Blood Raiders), Tetrimon Base (Order of St. Tetrimon)</div>
+
+<div class="card"><h2>1. Paste your fit (EFT format) and press Calculate</h2>
+<textarea id="fit" placeholder="[Ship, Fit name]&#10;Low slot modules...&#10;&#10;Mid slot modules...&#10;&#10;High slot modules...&#10;&#10;Rigs...&#10;&#10;Drones x5&#10;&#10;Cargo / ammo x1000"></textarea>
+<div class="row">
+<label class="m">Site <select id="site"><option value="tet">Tetrimon Base</option><option value="bra">Crimson Gauntlet (Blood Raiders)</option></select></label>
+<label class="m">Room attacking at once <input type="range" id="scale" min="20" max="100" step="5" value="60"><span id="scalev">60%</span></label>
+<button id="calc">Calculate</button><button id="clear" class="sec">Clear</button>
+<span id="status" class="mut"></span></div>
+<div id="modlist"></div></div>
+
+<div class="card" id="statscard" style="display:none"><h2>2. Computed fit stats</h2><div id="stats"></div></div>
+<div class="card" id="verdictcard" style="display:none"><h2>3. Will it survive?</h2><div id="out"></div>
+<div class="row"><button id="fixbtn">Correct my fit</button> <span class="mut" id="fixnote">Tries module and rig swaps, recalculates every one, keeps the ones that improve survival and still fit.</span></div>
+<div id="fixout"></div></div>
+
+<div class="card"><h2>Site data</h2><div id="site-data"></div></div>
+
+<div class="card"><h2>How accurate is this?</h2><ul class="mut">
+<li><b>Fit stats</b> are calculated from CCP's official static data (<span id="sdever"></span>) with every skill at level V, no implants, boosters, fleet bursts or overheating. The same rules the game uses are applied generically, so any ship, module, rig, charge, drone or subsystem can be pasted.</li>
+<li><b>Not modelled:</b> Reactive Armor Hardener adaptation (kept at its even base resists), Tech 3 destroyer modes, spool-up on Triglavian weapons (base damage shown), fighters, weapon tracking / missile application and range. DPS is the paper figure.</li>
+<li><b>NPC stats</b> (damage, damage types, neuts, HP, resists) are the real values for these NPC ships from the same static data. <b>Which ships and how many spawn per room</b> comes from the EVE University wiki's 2023 write-up, the closest documented layout. How many of them shoot you at the same time is the main uncertainty, so it is a slider: 60% is my default guess, 100% is the worst case. Drifter / Rogue Drone / Triglavian rift escalations are not included.</li></ul></div>
+
+<script src="eve-data.js"></script>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const EVE=window.EVE||null;
+// ---------------- data helpers ----------------
+const A=EVE?EVE.A:{},EF=EVE?EVE.E:{},GR=EVE?EVE.G:{},TY=EVE?EVE.T:{};
+const NAME={};if(EVE)for(const id in TY)NAME[TY[id][0].toLowerCase()]=+id;
+const AID={};if(EVE)for(const id in A)AID[A[id][0]]=+id;
+// Effects whose rules are hard-coded in the game client and so carry no modifier list in the static data.
+if(EVE){const P=(id,mods)=>{if(EF[id]&&!EF[id][1].length)EF[id][1]=mods;};const a=n=>AID[n];
+ P(660,[['charID','OwnerRequiredSkillModifier',a('emDamage'),a('damageMultiplierBonus'),6,0,0]]);
+ P(661,[['charID','OwnerRequiredSkillModifier',a('explosiveDamage'),a('damageMultiplierBonus'),6,0,0]]);
+ P(662,[['charID','OwnerRequiredSkillModifier',a('thermalDamage'),a('damageMultiplierBonus'),6,0,0]]);
+ P(668,[['charID','OwnerRequiredSkillModifier',a('kineticDamage'),a('damageMultiplierBonus'),6,0,0]]);
+ P(1730,[['charID','OwnerRequiredSkillModifier',a('damageMultiplier'),a('damageMultiplierBonus'),6,0,0]]);
+ P(1851,[['shipID','LocationRequiredSkillModifier',a('speed'),a('rofBonus'),6,0,0]]);
+ P(3774,[['shipID','ItemModifier',a('hiSlots'),a('hiSlotModifier'),2,0,0],['shipID','ItemModifier',a('medSlots'),a('medSlotModifier'),2,0,0],['shipID','ItemModifier',a('lowSlots'),a('lowSlotModifier'),2,0,0]]);
+ P(3773,[['shipID','ItemModifier',a('turretSlotsLeft'),a('turretHardPointModifier'),2,0,0],['shipID','ItemModifier',a('launcherSlotsLeft'),a('launcherHardPointModifier'),2,0,0]]);
+ P(4928,[267,268,269,270].map(x=>['shipID','ItemModifier',x,x,0,0,0]));}
+const SKILLS=EVE?Object.keys(TY).filter(id=>GR[TY[id][1]]&&GR[TY[id][1]][1]===16).map(Number):[];
+const catOf=id=>GR[TY[id][1]][1], grpName=id=>GR[TY[id][1]][0];
+const REQ=[182,183,184,1285,1289,1290];
+const DMG=[114,118,117,116]; // EM, Thermal, Kinetic, Explosive
+const RES={shield:[271,274,273,272],armor:[267,270,269,268],hull:[113,110,109,111]};
+const HP={shield:263,armor:265,hull:9};
+const DT=['EM','Thermal','Kinetic','Explosive'];
+const EXEMPT=new Set([6,8,16,20,32]);
+const PEN=i=>Math.exp(-Math.pow(i/2.67,2));
+const INACTIVE=/Micro Jump|Cloak|Cynosural|Smart ?Bomb|Salvager|Tractor Beam|Probe Launcher|Analyzer|Scanner|Bastion|Siege Module|Triage|Industrial Core|Assault Damage Control|Command Burst|Jump Portal|Jump Field|Warp Disruption Field|Interdiction|Bomb Launcher|Entosis|Clone Vat|Doomsday|Remote|Burst Projector|Zero-Point|Vorton Projector Oper/i;
+
+// ---------------- EFT parsing ----------------
+function parseEFT(txt){const lines=txt.replace(/ /g,' ').split(/\r?\n/).map(l=>l.trim());
+ const hi=lines.findIndex(l=>/^\[[^\]]+\]$/.test(l)&&!/^\[empty /i.test(l));if(hi<0)throw new Error('The first line must look like [Ship, Fit name].');
+ const m=lines[hi].match(/^\[([^,\]]+)(?:,\s*(.*))?\]$/);
+ const fit={ship:m[1].trim(),name:(m[2]||'').trim(),items:[]};
+ for(const l of lines.slice(hi+1)){if(!l||/^\[empty .*\]$/i.test(l))continue;let s=l,offline=false;
+  if(/\/offline$/i.test(s)){offline=true;s=s.replace(/\s*\/offline$/i,'').trim();}
+  let qty=0;const q=s.match(/^(.*?)\s+x\s?(\d+)$/i);if(q&&!NAME[s.toLowerCase()]){s=q[1].trim();qty=+q[2];}
+  let charge=null;if(!NAME[s.toLowerCase()]){const c=s.indexOf(',');if(c>0){charge=s.slice(c+1).trim();s=s.slice(0,c).trim();}}
+  fit.items.push({name:s,qty,charge,offline});}
+ return fit;}
+function resolveFit(fit){const missing=[];
+ fit.shipId=NAME[fit.ship.toLowerCase()];if(!fit.shipId||catOf(fit.shipId)!==6)throw new Error('Ship not recognised: '+fit.ship);
+ for(const it of fit.items){it.id=NAME[it.name.toLowerCase()]||0;if(!it.id){missing.push(it.name);continue;}
+  it.name=TY[it.id][0];const c=catOf(it.id);
+  it.kind=c===18?'drone':(c===7||c===32)&&!it.qty?'module':(c===8||c===7||c===32||c===18)?'cargo':'cargo';
+  if(c!==7&&c!==32&&c!==18&&c!==8)it.kind='other';
+  if(it.kind==='drone'&&!it.qty)it.qty=1;
+  it.chargeId=it.charge?(NAME[it.charge.toLowerCase()]||0):0;if(it.charge&&!it.chargeId)missing.push(it.charge);}
+ return missing;}
+function slotOf(id){const e=TY[id][3];if(catOf(id)===32)return'sub';if(e.includes(11))return'lo';if(e.includes(13))return'mid';if(e.includes(12))return'hi';if(e.includes(2663))return'rig';if(e.includes(3772))return'sub';return'other';}
+function fitToEFT(fit){const g={lo:[],mid:[],hi:[],rig:[],sub:[],other:[]},dr=[],cg=[];
+ for(const it of fit.items){if(!it.id)continue;if(it.kind==='drone')dr.push(it);else if(it.kind==='module')g[slotOf(it.id)].push(it);else cg.push(it);}
+ const out=[`[${fit.ship}, ${fit.name||'fit'}]`];
+ for(const k of['lo','mid','hi','rig','sub','other'])if(g[k].length){out.push(...g[k].map(it=>it.name+(it.charge?', '+it.charge:'')+(it.offline?' /OFFLINE':'')));out.push('');}
+ if(dr.length){out.push(...dr.map(d=>`${d.name} x${d.qty}`));out.push('');}
+ if(cg.length)out.push(...cg.map(d=>`${d.name} x${d.qty||1}`));
+ return out.join('\n').trim()+'\n';}
+
+// ---------------- dogma engine ----------------
+class Item{constructor(id,kind){this.id=id;this.kind=kind;this.base=TY[id]?TY[id][2]:{};this.effects=TY[id]?TY[id][3]:[];this.cat=TY[id]?catOf(id):-1;this.grp=TY[id]?TY[id][1]:0;this.name=TY[id]?TY[id][0]:'';this.online=true;this.active=false;this.cache=new Map();}}
+let SKILL_ITEMS=null;
+function chargeFits(mod,cid){const b=mod.base,cb=TY[cid][2];const groups=[604,605,606,609,610].map(a=>b[a]).filter(x=>x);
+ if(!groups.includes(TY[cid][1]))return false;if(b[128]&&cb[128]&&b[128]!==cb[128])return false;
+ if(b[38]!==undefined&&cb[161]!==undefined&&cb[161]>b[38]+1e-9)return false;return true;}
+function build(fit,activeMap){
+ const F={ship:new Item(fit.shipId,'ship'),char:new Item(0,'char'),modules:[],charges:[],drones:[],cargo:[],notes:[]};
+ F.char.cat=-2;
+ if(!SKILL_ITEMS){SKILL_ITEMS=SKILLS.map(id=>{const s=new Item(id,'skill');s.base=Object.assign({},s.base,{280:5});return s;});}
+ F.skills=SKILL_ITEMS;for(const s of F.skills)s.cache=new Map();
+ fit.items.forEach((it,idx)=>{if(!it.id)return;
+  if(it.kind==='drone'){const d=new Item(it.id,'drone');d.qty=it.qty;F.drones.push(d);}
+  else if(it.kind==='module'){const m=new Item(it.id,'module');m.idx=idx;m.online=!it.offline;m.slot=slotOf(it.id);
+   m.activatable=m.effects.some(e=>EF[e]&&[1,2,3].includes(EF[e][0]));
+   m.active=m.online&&m.activatable&&(activeMap&&activeMap[idx]!==undefined?activeMap[idx]:!INACTIVE.test(grpName(it.id)+' '+m.name));
+   if(it.chargeId&&catOf(it.chargeId)===8){const c=new Item(it.chargeId,'charge');c.module=m;m.charge=c;c.qty=Infinity;F.charges.push(c);}
+   F.modules.push(m);}
+  else if(it.kind==='cargo')F.cargo.push({id:it.id,qty:it.qty||1,name:it.name});});
+ // auto-load charges from cargo
+ for(const m of F.modules){if(m.charge||m.cat!==7)continue;if(![604,605,606,609,610].some(a=>m.base[a]))continue;
+  const c=F.cargo.find(c=>catOf(c.id)===8&&chargeFits(m,c.id));
+  if(c){const ch=new Item(c.id,'charge');ch.module=m;m.charge=ch;ch.qty=c.qty;ch.fromCargo=true;F.charges.push(ch);}}
+ // collect modifiers
+ const idx=new Map();const put=(T,attr,op,S,src)=>{let o=idx.get(T);if(!o){o={};idx.set(T,o);}(o[attr]=o[attr]||[]).push({op,S,src});};
+ const loc=[...F.modules,...F.charges],owned=[...F.drones,...F.charges];
+ const req=(it,sk)=>{for(const a of REQ)if(it.base[a]===sk)return true;return false;};
+ const sources=[F.ship,...F.skills,...F.modules,...F.charges];
+ for(const S of sources){
+  for(const eid of S.effects){if(eid===132)continue;const E=EF[eid];if(!E)continue;const c=E[0];
+   const on=c===0||(c===4&&S.online)||(c===1&&S.active);if(!on)continue;
+   if(S.kind==='module'&&!S.online&&c!==0)continue;
+   for(const M of E[1]){const[dom,func,tA,sA,op,sk,gp]=M;if(op<-1||op>7)continue;let T=[];
+    if(dom==='itemID'){T=func==='ItemModifier'?[S]:[];}
+    else if(dom==='shipID'){if(func==='ItemModifier')T=[F.ship];else if(func==='LocationModifier')T=loc;else if(func==='LocationGroupModifier')T=loc.filter(x=>x.grp===gp);else if(func==='LocationRequiredSkillModifier')T=loc.filter(x=>req(x,sk||S.id));else if(func==='OwnerRequiredSkillModifier')T=owned.filter(x=>req(x,sk||S.id));}
+    else if(dom==='charID'){if(func==='ItemModifier')T=[F.char];else if(func==='OwnerRequiredSkillModifier')T=owned.filter(x=>req(x,sk||S.id));else if(func==='LocationRequiredSkillModifier')T=loc.filter(x=>req(x,sk||S.id));else if(func==='LocationGroupModifier')T=loc.filter(x=>x.grp===gp);}
+    else if(dom==='otherID'){if(S.kind==='charge'&&S.module)T=[S.module];else if(S.kind==='module'&&S.charge)T=[S.charge];}
+    for(const t of T)put(t,tA,op,S,sA);}}}
+ F.idx=idx;
+ F.get=(it,attr)=>{if(it.cache.has(attr))return it.cache.get(attr);
+  let base=it.base[attr];if(base===undefined)base=A[attr]?A[attr][1]:0;it.cache.set(attr,base);
+  const o=idx.get(it);const list=o&&o[attr];let v=base;
+  if(list){const stackable=A[attr]?A[attr][2]:1;let preA=null,postA=null,add=0;const free=[],pen=[];
+   for(const m of list){const x=F.get(m.S,m.src);const p=!stackable&&!EXEMPT.has(m.S.cat);
+    switch(m.op){case -1:preA=x;break;case 7:postA=x;break;case 2:add+=x;break;case 3:add-=x;break;
+     case 0:case 4:(p?pen:free).push(x);break;case 1:case 5:(p?pen:free).push(1/x);break;case 6:(p?pen:free).push(1+x/100);break;}}
+   if(preA!==null)v=preA;v+=add;for(const f of free)v*=f;
+   const up=pen.filter(x=>x>1).sort((a,b)=>b-a),dn=pen.filter(x=>x<1).sort((a,b)=>a-b);
+   up.forEach((x,i)=>v*=1+(x-1)*PEN(i));dn.forEach((x,i)=>v*=1+(x-1)*PEN(i));
+   if(postA!==null)v=postA;}
+  it.cache.set(attr,v);return v;};
+ return F;}
+
+function cycleOf(F,m){for(const eid of m.effects){const E=EF[eid];if(!E||![1,2,3].includes(E[0])||!E[4])continue;
+  const dur=F.get(m,E[4])/1000;if(!(dur>0))continue;return{dur,need:E[3]?F.get(m,E[3]):0};}return null;}
+const hasEff=(it,name)=>it.effects.some(e=>EF[e]&&EF[e][2]===name);
+const TURRET=['targetAttack','projectileFired','targetDisintegratorAttack'];
+
+function stats(F){const g=F.get,S=F.ship;const st={};
+ st.res={};st.hp={};for(const l of['shield','armor','hull']){st.res[l]=RES[l].map(a=>g(S,a));st.hp[l]=g(S,HP[l]);}
+ st.eff=(l,mix)=>st.hp[l]/st.res[l].reduce((a,r,i)=>a+r*mix[i],0);
+ st.ehp=mix=>st.eff('shield',mix)+st.eff('armor',mix)+st.eff('hull',mix);
+ st.ehpOmni=st.ehp([.25,.25,.25,.25]);
+ // local reps
+ const rep={shield:0,armor:0,hull:0},burst={shield:0,armor:0,hull:0};st.reps=[];
+ for(const m of F.modules){if(!m.active)continue;const cy=cycleOf(F,m);if(!cy)continue;let layer=null,amt=0,anc=false;
+  if(hasEff(m,'shieldBoosting')||hasEff(m,'fueledShieldBoosting')){layer='shield';amt=g(m,68);anc=hasEff(m,'fueledShieldBoosting');}
+  else if(hasEff(m,'armorRepair')||hasEff(m,'fueledArmorRepair')){layer='armor';amt=g(m,84);anc=hasEff(m,'fueledArmorRepair');}
+  else if(hasEff(m,'structureRepair')){layer='hull';amt=g(m,83);}
+  if(!layer||!amt)continue;let sus=amt/cy.dur,bur=sus,note='';
+  if(anc&&m.charge){const n=Math.max(1,Math.floor(g(m,38)/(m.charge.base[161]||1)));const rl=(g(m,1795)||60000)/1000;
+   if(layer==='armor'){const mult=g(m,1886)||1;bur=amt*mult/cy.dur;sus=(n*amt*mult+ (rl/cy.dur)*0)/(n*cy.dur+rl)+0;sus=Math.max(sus,amt/cy.dur*0+sus);note=` (${n} charged cycles, then ${rl}s reload)`;}
+   else{sus=n*amt/(n*cy.dur+rl);note=` (${n} cycles per load, ${rl}s reload)`;}}
+  rep[layer]+=sus;burst[layer]+=bur;st.reps.push(`${m.name}: ${amt.toFixed(0)} HP / ${cy.dur.toFixed(2)}s${note}`);}
+ st.rep=rep;st.burst=burst;st.passive=2.5*st.hp.shield/(g(S,479)/1000);
+ // capacitor
+ st.cap={max:g(S,482),tau:g(S,55)/1000,neutRes:g(S,2045)||1};st.cap.peak=2.5*st.cap.max/st.cap.tau;
+ // fitting
+ let cpu=0,pg=0,cal=0;const used={lo:0,mid:0,hi:0,rig:0,sub:0,other:0};let tur=0,lau=0;
+ for(const m of F.modules){used[m.slot]++;if(m.cat===7&&m.slot==='rig')cal+=g(m,1153);if(!m.online)continue;cpu+=g(m,50);pg+=g(m,30);
+  if(hasEff(m,'turretFitted'))tur++;if(hasEff(m,'launcherFitted'))lau++;}
+ st.fitting={cpu,cpuMax:g(S,48),pg,pgMax:g(S,11),cal,calMax:g(S,1132),used,
+  slots:{lo:g(S,12),mid:g(S,13),hi:g(S,14),rig:g(S,1137)},tur,turMax:g(S,102),lau,lauMax:g(S,101)};
+ const f=st.fitting;st.fitProblems=[];
+ if(f.cpu>f.cpuMax+0.005)st.fitProblems.push(`CPU over by ${(f.cpu-f.cpuMax).toFixed(1)} tf`);
+ if(f.pg>f.pgMax+0.005)st.fitProblems.push(`Powergrid over by ${(f.pg-f.pgMax).toFixed(1)} MW`);
+ if(f.cal>f.calMax)st.fitProblems.push(`Calibration over by ${f.cal-f.calMax}`);
+ for(const k of['lo','mid','hi','rig'])if(f.used[k]>f.slots[k])st.fitProblems.push(`${f.used[k]} ${ {lo:'low',mid:'mid',hi:'high',rig:'rig'}[k]} slot items but the hull has ${f.slots[k]}`);
+ if(f.tur>f.turMax)st.fitProblems.push(`${f.tur} turrets but ${f.turMax} turret hardpoints`);
+ if(f.lau>f.lauMax)st.fitProblems.push(`${f.lau} launchers but ${f.lauMax} launcher hardpoints`);
+ // dps
+ st.dmg=[0,0,0,0];st.wdps=0;st.ddps=0;st.dpsNotes=[];const mdm=g(F.char,212)||1;
+ for(const m of F.modules){if(!m.online||m.cat!==7)continue;const isT=TURRET.some(n=>hasEff(m,n)),isL=hasEff(m,'useMissiles');if(!isT&&!isL)continue;
+  const sp=g(m,51)/1000;if(!(sp>0))continue;
+  if(!m.charge){const own=DMG.map(a=>g(m,a));if(isT&&own.some(x=>x>0)){const mult=g(m,64)||1;own.forEach((x,i)=>{st.dmg[i]+=x*mult/sp;st.wdps+=x*mult/sp;});}else st.dpsNotes.push(`<span class="wtxt">${m.name}: no ammo in the fit or cargo, counted as 0 DPS</span>`);continue;}
+  const mult=isT?(g(m,64)||1):mdm;DMG.forEach((a,i)=>{const x=g(m.charge,a)*mult/sp;st.dmg[i]+=x;st.wdps+=x;});
+  if(m.charge.fromCargo&&!st.dpsNotes.includes('ammo'))m.charge.noted=true;}
+ const dd=d=>DMG.reduce((s,a)=>s+g(d,a),0)*(g(d,64)||1)/((g(d,51)||1e9)/1000);
+ let bw=g(S,1271),slots=Math.round(g(F.char,352))||5;
+ for(const d of[...F.drones].sort((x,y)=>dd(y)-dd(x))){const need=g(d,1272)||0;let n=0;while(n<d.qty&&slots>0&&need<=bw+1e-9){n++;slots--;bw-=need;}
+  if(n&&dd(d)>0){DMG.forEach((a,i)=>{const x=g(d,a)*(g(d,64)||1)/(g(d,51)/1000)*n;st.dmg[i]+=x;st.ddps+=x;});st.dpsNotes.push(`${n}× ${d.name}: ${(dd(d)*n).toFixed(0)} DPS`);}
+  else if(!n)st.dpsNotes.push(`${d.name}: not launched (bandwidth / drone limit)`);}
+ st.dps=st.wdps+st.ddps;
+ st.ewar={web:F.modules.some(m=>m.online&&/Stasis Web|Stasis Grappler/.test(grpName(m.id))),point:F.modules.some(m=>m.online&&/Warp Scrambler|Warp Disrupt/.test(grpName(m.id)))};
+ st.autoLoaded=F.charges.filter(c=>c.fromCargo).map(c=>`${c.module.name} ← ${c.name}`);
+ return st;}
+
+function capSim(F,st,extraDrain,horizon=1500,dt=0.2){const Cmax=st.cap.max,tau=st.cap.tau;const draws=[],boosters=[];
+ for(const m of F.modules){if(!m.active)continue;const cy=cycleOf(F,m);if(!cy)continue;
+  if(hasEff(m,'powerBooster')){if(m.charge){const amt=F.get(m.charge,67);const per=Math.max(1,Math.floor(F.get(m,38)/(m.charge.base[161]||1)));
+    if(amt>0)boosters.push({amt,dur:cy.dur,reload:(F.get(m,1795)||10000)/1000,per,left:m.charge.qty,loaded:Math.min(per,m.charge.qty),next:0});}continue;}
+  if(cy.need>0)draws.push({need:cy.need,dur:cy.dur,next:0});}
+ let cap=Cmax,t=0,fail=null,min=Cmax;const k=10*Cmax/tau;
+ while(t<horizon){
+  for(const d of draws)while(d.next<=t+1e-9){if(cap>=d.need)cap-=d.need;else if(fail===null)fail=t;d.next+=d.dur;}
+  for(const b of boosters)while(b.next<=t+1e-9){if(b.loaded>0&&b.left>0){cap=Math.min(Cmax,cap+b.amt);b.loaded--;b.left--;b.next+=b.dur;if(b.loaded===0&&b.left>0){b.next+=b.reload;b.loaded=Math.min(b.per,b.left);}}else b.next=Infinity;}
+  if(fail!==null)break;
+  const x=Math.max(cap,0)/Cmax;cap+=dt*(k*(Math.sqrt(x)-x)-extraDrain);cap=Math.min(Cmax,Math.max(0,cap));
+  t+=dt;if(t>horizon/3)min=Math.min(min,cap);}
+ return{stable:fail===null,lasts:fail,minPct:min/Cmax*100,use:draws.reduce((a,d)=>a+d.need/d.dur,0),peak:st.cap.peak,max:Cmax,boosters:boosters.length};}
+
+// ---------------- site evaluation ----------------
+function siteCounts(site,full){const k=full?1:(+$('scale').value||60)/100;return EVE.SITES[site].ships.map(x=>x.cnt*k);}
+function siteLoad(site,full){const s=EVE.SITES[site],n=siteCounts(site,full);const d=[0,0,0,0];let neut=0;
+ s.ships.forEach((x,i)=>{for(let j=0;j<4;j++)d[j]+=n[i]*(x.tur[j]+x.mis[j]);neut+=n[i]*x.neut;});
+ const raw=d.reduce((a,b)=>a+b,0);return{d,raw,mix:raw?d.map(x=>x/raw):[.25,.25,.25,.25],neut};}
+function npcEhp(x,mix){let e=0;for(let l=0;l<3;l++){const r=x.res[l].reduce((a,v,i)=>a+v*mix[i],0);e+=x.hp[l]/(r||1);}return e;}
+function evalFit(F,fast){const site=$('site').value,st=stats(F),typ=siteLoad(site,false),full=siteLoad(site,true);
+ const resOn=(l,mix)=>st.res[l].reduce((a,r,i)=>a+r*mix[i],0);
+ const sus={shield:(st.rep.shield+st.passive)/resOn('shield',typ.mix),armor:st.rep.armor/resOn('armor',typ.mix),hull:st.rep.hull/resOn('hull',typ.mix)};
+ const layer=sus.armor>sus.shield?(sus.hull>sus.armor?'hull':'armor'):(sus.hull>sus.shield?'hull':'shield');
+ const holds=sus[layer];const ehp=st.ehp(typ.mix);const passiveHolds=layer==='shield'?st.passive/resOn('shield',typ.mix):0;
+ const neutT=typ.neut*st.cap.neutRes,neutF=full.neut*st.cap.neutRes;const H=fast?1200:1500,dt=fast?0.25:0.2;
+ const capNo=capSim(F,st,0,H,dt),capNeut=capSim(F,st,neutT,H,dt),capFull=capSim(F,st,neutF,H,dt);
+ const dmix=st.dps?st.dmg.map(x=>x/st.dps):[.25,.25,.25,.25];
+ const clearOf=fullRoom=>{const n=siteCounts(site,fullRoom),sh=EVE.SITES[site].ships;const e=sh.reduce((a,x,i)=>a+n[i]*npcEhp(x,dmix),0),r=sh.reduce((a,x,i)=>a+n[i]*x.rep,0);
+  return{ehp:e,t:st.dps>r*0.5?e/Math.max(st.dps-r*0.25,1):Infinity};};
+ const cT=clearOf(false),cF=clearOf(true);const clear=cT.t,waveEhp=cT.ehp;
+ const capDep=F.modules.some(m=>m.active&&(hasEff(m,'shieldBoosting')||hasEff(m,'armorRepair')||hasEff(m,'structureRepair')||hasEff(m,'fueledArmorRepair')||/Hardener/.test(grpName(m.id))));
+ // how long you stay alive if nothing dies: tank shortfall eats the buffer; once cap is gone only passive regen is left
+ const alive=(raw,cap)=>{const tank=holds>=raw?Infinity:ehp/(raw-holds);if(!capDep||cap.stable)return tank;
+  const after=passiveHolds>=raw?Infinity:ehp/(raw-passiveHolds);return Math.min(tank,cap.lasts+after);};
+ const net=holds-typ.raw,netFull=holds-full.raw,ttl=alive(typ.raw,capNeut),ttlFull=alive(full.raw,capFull);
+ let lvl,verdict;const why=[];
+ if(ttlFull>=Math.max(2*cF.t,600)&&isFinite(cF.t)){lvl='ok';verdict='Likely survives';}
+ else if(ttl>=Math.max(1.5*clear,150)&&isFinite(clear)){lvl='warn';verdict='Marginal';
+  if(netFull<0)why.push('a full room out-damages your tank');if(capDep&&!capFull.stable)why.push('cap runs out under a full room of neuts');if(!why.length)why.push('little margin against a full room');}
+ else{lvl='bad';verdict='Likely to die';
+  if(!isFinite(clear))why.push('not enough DPS to kill the wave');else if(net<0)why.push('the wave kills you before you can clear it');
+  if(capDep&&!capNeut.stable&&capNeut.lasts<1.5*clear)why.push('cap fails under neuts before the wave is cleared');if(!why.length)why.push('you die before the wave does');}
+ if(st.fitProblems.length){why.push('fit is not valid as pasted');if(lvl==='ok'){lvl='warn';verdict='Marginal';}}
+ const rank={bad:0,warn:1,ok:2}[lvl];const r1=isFinite(clear)?Math.min(ttl/clear,12):0,r2=isFinite(cF.t)?Math.min(ttlFull/cF.t,12):0;
+ const score=rank*1e5+r1*1000+r2*600+Math.max(-500,Math.min(netFull,300))*0.3+Math.min(st.dps,2000)*0.05+(st.ewar.web?40:0)+(st.ewar.point?10:0)-(st.fitProblems.length?1e7:0);
+ return{F,st,site,typ,full,holds,layer,ehp,capNo,capNeut,capFull,neutT,neutF,clear,clearFull:cF.t,waveEhp,net,netFull,ttl,ttlFull,lvl,rank,verdict,why,score,capDep,burst:st.burst[layer]/resOn(layer,typ.mix)};}
+
+// ---------------- UI ----------------
+let FIT=null,LAST=null,ACTIVE={};
+const fmt=(x,d=0)=>isFinite(x)?x.toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d}):'∞';
+const pct=x=>((1-x)*100).toFixed(1)+'%';
+function fmtT(t){if(t===null||t===undefined)return'—';if(!isFinite(t))return'indefinitely';const m=Math.floor(t/60),s=Math.round(t%60);return m?`${m}m ${s}s`:`${s}s`;}
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function renderSite(){const s=EVE.SITES[$('site').value],n=siteCounts($('site').value,false),k=1;
+ $('site-data').innerHTML=`<b>${s.name}</b> <span class="mut">NPC stats are real values from the game data. "At once" follows the slider above: the share of the room shooting you at the same time.</span>
+ <div class="tw"><table><tr><th>Ship</th><th>Class</th><th class="n">Max</th><th class="n">At once</th><th class="n">DPS each</th><th>Dmg EM/Th/Kin/Exp</th><th class="n">HP (S/A/H)</th><th>EWAR</th></tr>`+
+ s.ships.map((x,i)=>{const d=x.tur.map((v,j)=>v+x.mis[j]),t=d.reduce((a,b)=>a+b,0);return`<tr><td>${x.n}</td><td>${x.c}</td><td class="n">${x.cnt}</td><td class="n">${fmt(n[i],1)}</td><td class="n">${fmt(t*k)}</td><td>${t?d.map(v=>Math.round(v/t*100)).join('/'):'—'}</td><td class="n">${x.hp.map(h=>fmt(h)).join(' / ')}</td><td>${x.ew.join(', ')||'—'}</td></tr>`;}).join('')+'</table></div>';}
+function run(){if(!EVE){$('status').innerHTML='<span class="btxt">eve-data.js is missing. Keep it in the same folder as this page.</span>';return;}
+ try{ACTIVE={};FIT=parseEFT($('fit').value);const missing=resolveFit(FIT);
+  $('status').innerHTML=missing.length?`<span class="wtxt">Not recognised and ignored: ${missing.map(esc).join(', ')}</span>`:'All items recognised.';recompute();}
+ catch(e){$('status').innerHTML=`<span class="btxt">${esc(e.message)}</span>`;console.error(e);}}
+function recompute(){const F=build(FIT,ACTIVE);LAST=F;const ev=evalFit(F);renderModules(F);renderStats(ev);renderVerdict(ev);$('fixout').innerHTML='';}
+function refresh(){renderSite();if(LAST){const ev=evalFit(LAST);renderStats(ev);renderVerdict(ev);$('fixout').innerHTML='';}}
+function renderModules(F){const order={hi:0,mid:1,lo:2,rig:3,sub:4,other:5};
+ const rows=[...F.modules].sort((a,b)=>order[a.slot]-order[b.slot]).map(m=>{const cy=m.active?cycleOf(F,m):null;
+  const cap=cy&&cy.need>0?` <span class="mut">${(cy.need/cy.dur).toFixed(1)} GJ/s</span>`:'';
+  return`<label class="m"><input type="checkbox" data-i="${m.idx}" ${m.active?'checked':''} ${!m.activatable||!m.online?'disabled':''}>${esc(m.name)}${m.charge?` <span class="mut">(${esc(m.charge.name)})</span>`:''}${!m.online?' <span class="mut">offline</span>':''}${cap}</label>`;}).join('');
+ $('modlist').innerHTML=`<h3>Modules. Tick = running. Untick anything you will not keep on.</h3><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">${rows}</div>`;
+ $('modlist').querySelectorAll('input').forEach(c=>c.onchange=()=>{ACTIVE[+c.dataset.i]=c.checked;recompute();});}
+function renderStats(ev){const s=ev.st,f=s.fitting;$('statscard').style.display='';
+ const bar=(v,m)=>{const p=m?v/m*100:0;const c=p>100.0005?'bad':p>95?'warn':'';return`<div class="bar"><i class="${c}" style="width:${Math.min(100,p)}%"></i></div>`;};
+ const rr=(l,k)=>`<tr><td>${l}</td>${s.res[k].map(r=>`<td class="n">${pct(r)}</td>`).join('')}<td class="n">${fmt(s.hp[k])}</td><td class="n">${fmt(s.eff(k,[.25,.25,.25,.25]))}</td><td class="n">${k==='shield'?fmt(s.rep.shield)+' + '+fmt(s.passive,1)+' passive':fmt(s.rep[k])}</td></tr>`;
+ $('stats').innerHTML=`<div class="grid">
+ <div class="stat">EHP (even damage)<br><b>${fmt(s.ehpOmni)}</b><br><span class="mut">against this site's damage: ${fmt(ev.ehp)}</span></div>
+ <div class="stat">Tank against this site<br><b>${fmt(ev.holds)} DPS</b><br><span class="mut">${ev.layer} tank, sustained${ev.burst>ev.holds*1.02?` · burst ${fmt(ev.burst)}`:''}</span></div>
+ <div class="stat">Capacitor<br><b>${fmt(ev.capNo.max)} GJ</b> · ${ev.capNo.stable?`stable at ${ev.capNo.minPct.toFixed(1)}%`:`lasts ${fmtT(ev.capNo.lasts)}`}<br><span class="mut">peak regen ${fmt(ev.capNo.peak,1)} GJ/s · modules use ${fmt(ev.capNo.use,1)} GJ/s</span></div>
+ <div class="stat">DPS (paper)<br><b>${fmt(s.dps)}</b><br><span class="mut">weapons ${fmt(s.wdps)} · drones ${fmt(s.ddps)} · EM/Th/Kin/Exp ${s.dmg.map(x=>s.dps?Math.round(x/s.dps*100):0).join('/')}%</span></div>
+ <div class="stat">CPU ${fmt(f.cpu,1)} / ${fmt(f.cpuMax,1)}${bar(f.cpu,f.cpuMax)}Powergrid ${fmt(f.pg,1)} / ${fmt(f.pgMax,1)}${bar(f.pg,f.pgMax)}Calibration ${fmt(f.cal)} / ${fmt(f.calMax)}${bar(f.cal,f.calMax)}</div>
+ </div>
+ ${s.fitProblems.length?`<div class="v bad" style="font-size:14px">This fit is not valid: ${s.fitProblems.join('; ')}.</div>`:''}
+ <h3>Resistances and local repair</h3><div class="tw"><table><tr><th></th><th class="n">EM</th><th class="n">Thermal</th><th class="n">Kinetic</th><th class="n">Explosive</th><th class="n">HP</th><th class="n">EHP</th><th class="n">Rep HP/s</th></tr>${rr('Shield','shield')}${rr('Armor','armor')}${rr('Hull','hull')}</table></div>
+ <div class="mut" style="margin-top:6px">${[...s.reps.map(esc),...s.dpsNotes,...(s.autoLoaded.length?['Loaded from cargo: '+s.autoLoaded.map(esc).join(', ')]:[])].join(' · ')}</div>`;}
+function renderVerdict(ev){$('verdictcard').style.display='';const s=ev.st,name=EVE.SITES[ev.site].name;const notes=[];
+ const mixTxt=ev.typ.mix.map((x,i)=>x>0.005?`${Math.round(x*100)}% ${DT[i]}`:null).filter(Boolean).join(', ');
+ notes.push(`Incoming damage, before your resists: <b>${fmt(ev.typ.raw)} DPS</b> with ${$('scale').value}% of the room on you, <b>${fmt(ev.full.raw)}</b> with the whole room (${mixTxt}).`);
+ notes.push(`Your ${ev.layer} tank sustains <b>${fmt(ev.holds)} DPS</b> of that mix. At ${$('scale').value}%: ${ev.net>=0?`holds with ${fmt(ev.net)} to spare`:`short by ${fmt(-ev.net)}`}. Full room: ${ev.netFull>=0?`holds with ${fmt(ev.netFull)} to spare`:`short by ${fmt(-ev.netFull)}`}.`);
+ notes.push(`If nothing died you would stay alive <b>${fmtT(ev.ttl)}</b> at ${$('scale').value}% and <b>${fmtT(ev.ttlFull)}</b> against the full room (tank shortfall plus cap running out).`);
+ notes.push(`Capacitor with no neuts: ${ev.capNo.stable?`stable at ${ev.capNo.minPct.toFixed(1)}%`:`lasts ${fmtT(ev.capNo.lasts)}`}. Under this site's neuts (${fmt(ev.typ.neut,1)} GJ/s${s.cap.neutRes<0.999?`, ${fmt(ev.neutT,1)} after your neut resistance`:''}): <b>${ev.capNeut.stable?`stable at ${ev.capNeut.minPct.toFixed(1)}%`:`lasts ${fmtT(ev.capNeut.lasts)}`}</b>; full room: ${ev.capFull.stable?'stable':`lasts ${fmtT(ev.capFull.lasts)}`}.`);
+ notes.push(s.dps?`Time to clear that many ships at ${fmt(s.dps)} paper DPS: about <b>${fmtT(ev.clear)}</b>, full room ${fmtT(ev.clearFull)} (real time is longer against small ships).`:'<span class="wtxt">The fit shows no DPS, so the wave never dies.</span>');
+ if(!s.ewar.web&&!s.ewar.point)notes.push('No web or point fitted. The NPCs web and point you, so they choose the range.');
+ const recs=ev.lvl==='ok'?[]:recommend(ev);
+ $('out').innerHTML=`<div class="v ${ev.lvl}">${name}: ${ev.verdict}${ev.why.length?' ('+ev.why.join('; ')+')':''}</div><ul>${notes.map(n=>`<li>${n}</li>`).join('')}</ul>`+(recs.length?`<h3>What to change</h3><ul>${recs.map(n=>`<li>${n}</li>`).join('')}</ul>`:'');}
+function recommend(ev){const r=[],s=ev.st;
+ if(s.fitProblems.length)r.push('Fix the fitting problems first: '+s.fitProblems.join('; ')+'.');
+ if(ev.capDep&&!ev.capFull.stable&&ev.capFull.lasts<Math.max(600,2*ev.clearFull))r.push(`Cap lasts ${fmtT(ev.capFull.lasts)} under a full room of neuts. A cap booster with charges, a cap battery (adds neut resistance), cap rigs, or killing the neuting ships first all help.`);
+ if(ev.netFull<0){const res=s.res[ev.layer];const worst=[0,1].sort((a,b)=>res[b]-res[a])[0];
+  r.push(`The ${ev.layer} tank is short by ${fmt(-(ev.net<0?ev.net:ev.netFull))} DPS ${ev.net<0?'at the chosen share of the room':'against a full room'}. This site is mostly EM and thermal; your ${ev.layer} ${DT[worst]} resist is ${pct(res[worst])}.`);}
+ if(!isFinite(ev.clear)||ev.clear*1.5>ev.ttl)r.push('More damage shortens the fight: the wave lasts longer than you do.');
+ return r;}
+
+// ---------------- Correct my fit ----------------
+const SIZES=['Small','Medium','Large','Capital'];
+const CAND={
+ mid:['Multispectrum Shield Hardener II','EM Shield Hardener II','Thermal Shield Hardener II','Shield Boost Amplifier II','Small Capacitor Booster II','Medium Capacitor Booster II','Heavy Capacitor Booster II','Small Cap Battery II','Medium Cap Battery II','Large Cap Battery II','Stasis Webifier II','Cap Recharger II','Small Shield Booster II','Medium Shield Booster II','Large Shield Booster II','X-Large Shield Booster II','Small Shield Extender II','Medium Shield Extender II','Large Shield Extender II'],
+ lo:['Multispectrum Energized Membrane II','EM Armor Hardener II','Thermal Armor Hardener II','EM Energized Membrane II','Thermal Energized Membrane II','Damage Control II','Capacitor Power Relay II','Capacitor Flux Coil II','Power Diagnostic System II','Small Armor Repairer II','Medium Armor Repairer II','Large Armor Repairer II','Co-Processor II','Reactor Control Unit II'],
+ rig:['EM Shield Reinforcer II','Thermal Shield Reinforcer II','Core Defense Operational Solidifier II','Core Defense Capacitor Safeguard II','Core Defense Field Extender II','EM Armor Reinforcer II','Thermal Armor Reinforcer II','Auxiliary Nano Pump II','Nanobot Accelerator II','Capacitor Control Circuit II','Semiconductor Memory Cell II','Core Defense Field Purger II'],
+ hi:[]};
+const CAPCH=[3200,1600,800,400,200,150,100,75,50,25];
+function cloneFit(f){return{ship:f.ship,name:f.name,shipId:f.shipId,items:f.items.map(i=>Object.assign({},i))};}
+function capChargeFor(modId){const cap=TY[modId][2][38]||0;for(const n of CAPCH){const id=NAME[('navy cap booster '+n)]||NAME[('cap booster '+n)];const id2=NAME['cap booster '+n];
+  if(id2&&chargeFits({base:TY[modId][2]},id2))return id2;}return 0;}
+function freeCargo(fit){let used=0;for(const it of fit.items)if(it.kind==='cargo'&&it.id)used+=(TY[it.id][2][161]||0)*(it.qty||1);return(TY[fit.shipId][2][38]||0)-used;}
+async function correct(){if(!FIT||!LAST)return;const btn=$('fixbtn');btn.disabled=true;
+ try{let cur=cloneFit(FIT);let ev=evalFit(build(cur,{}),true);const start=ev;const changes=[];const rig=SIZES[(TY[cur.shipId][2][1547]||1)-1]||'Small';
+  for(let round=0;round<6&&ev.lvl!=='ok';round++){let best=null,tested=0;
+   for(let i=0;i<cur.items.length;i++){const it=cur.items[i];if(!it.id||it.kind!=='module')continue;const slot=slotOf(it.id);if(!CAND[slot]||!CAND[slot].length)continue;
+    for(const c of CAND[slot]){const cname=slot==='rig'?`${rig} ${c}`:c;const cid=NAME[cname.toLowerCase()];if(!cid||cid===it.id)continue;
+     const trial=cloneFit(cur);trial.items[i]={name:TY[cid][0],id:cid,qty:0,charge:null,chargeId:0,offline:false,kind:'module'};let added=null;
+     if(/Capacitor Booster/.test(grpName(cid))){const ch=capChargeFor(cid);if(!ch)continue;if(!trial.items.some(x=>x.id===ch)){const vol=TY[ch][2][161]||1;const q=Math.min(20,Math.floor(freeCargo(trial)/vol));if(q<4)continue;added={name:TY[ch][0],id:ch,qty:q,charge:null,chargeId:0,offline:false,kind:'cargo'};trial.items.push(added);}}
+     const e2=evalFit(build(trial,{}),true);tested++;if(e2.st.fitProblems.length||e2.rank<ev.rank)continue;
+     if(e2.score>ev.score+150&&(!best||e2.score>best.ev.score))best={trial,ev:e2,from:it.name,to:TY[cid][0],added};}
+    if(i%4===3){$('fixnote').textContent=`Round ${round+1}: tested ${tested} swaps…`;await new Promise(r=>setTimeout(r));}}
+   if(!best)break;cur=best.trial;ev=best.ev;changes.push(best);}
+  $('fixnote').textContent='Tries module and rig swaps, recalculates every one, keeps the ones that improve survival and still fit.';
+  const line=e=>`${e.verdict} · tank ${fmt(e.holds)} DPS · cap under neuts ${e.capNeut.stable?'stable':fmtT(e.capNeut.lasts)} · alive ${fmtT(e.ttl)} / full room ${fmtT(e.ttlFull)} · ${fmt(e.st.dps)} DPS`;
+  if(!changes.length){$('fixout').innerHTML=`<div class="v ${ev.lvl}" style="font-size:14px">${ev.lvl==='ok'?'Nothing to fix. This fit already passes.':'No single swap from my list improves this fit while still fitting. It needs a different tank layout or hull for this site.'}</div>`;}
+  else{const eft=fitToEFT(cur);
+   $('fixout').innerHTML=`<h3>Suggested changes, each recalculated</h3><div class="tw"><table><tr><th>Swap out</th><th>Swap in</th><th>Result after this change</th></tr>${changes.map(c=>`<tr><td>${esc(c.from)}</td><td>${esc(c.to)}${c.added?` <span class="mut">+ ${esc(c.added.name)} x${c.added.qty}</span>`:''}</td><td>${line(c.ev)}</td></tr>`).join('')}</table></div>
+   <div class="mut">Before: ${line(start)}<br>After: <b>${line(ev)}</b></div>
+   <h3>Corrected fit (EFT)</h3><textarea id="fixed" readonly>${esc(eft)}</textarea>
+   <div class="row"><button id="copyfix">Copy fit</button><button id="loadfix" class="sec">Load into checker</button><span class="mut">Swaps use standard Tech II modules; faction versions of the same module do better.</span></div>`;
+   $('copyfix').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText($('fixed').value);$('copyfix').textContent='Copied';};
+   $('loadfix').onclick=()=>{$('fit').value=$('fixed').value;run();window.scrollTo(0,0);};}}
+ catch(e){$('fixout').innerHTML=`<span class="btxt">${esc(e.message)}</span>`;console.error(e);}
+ btn.disabled=false;}
+
+// ---------------- wiring ----------------
+$('calc').onclick=run;$('fixbtn').onclick=correct;
+$('clear').onclick=()=>{$('fit').value='';FIT=LAST=null;ACTIVE={};$('modlist').innerHTML='';$('status').textContent='';$('statscard').style.display='none';$('verdictcard').style.display='none';$('fixout').innerHTML='';$('fit').focus();};
+$('site').onchange=refresh;$('scale').oninput=()=>{$('scalev').textContent=$('scale').value+'%';refresh();};
+if(EVE){$('sdever').textContent=`build ${EVE.build}, ${String(EVE.date).slice(0,10)}`;renderSite();$('status').textContent=`${Object.keys(TY).length.toLocaleString()} items loaded. All skills at V.`;}
+else $('status').innerHTML='<span class="btxt">eve-data.js is missing. Keep it in the same folder as this page.</span>';
+</script></body></html>

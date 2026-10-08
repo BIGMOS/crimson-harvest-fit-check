@@ -1,0 +1,8 @@
+pyfa/
+pyfa-download/
+sde-download/
+.claude/
+crimson-checker-v1.html
+crimson-checker-v2.html
+fit-*.txt
+__pycache__/
