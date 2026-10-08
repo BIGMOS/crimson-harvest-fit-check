@@ -1,16 +1,24 @@
-# Crimson Harvest Fit Check
+# Crimson Harvest & Wormhole Site Fit Check
 
-Paste an EVE Online fit (EFT format) and see whether it is likely to survive the Crimson Harvest event sites (Tetrimon Base and Crimson Gauntlet).
+Paste an EVE Online fit (EFT format) and see whether it is likely to survive the Crimson Harvest event sites (Tetrimon Base and Crimson Gauntlet) or the C3–C6 wormhole combat anomalies.
 
 **Use it:** https://bigmos.github.io/crimson-harvest-fit-check/
 
-Or download `crimson-checker.html` and `eve-data.js` into the same folder and open the HTML file. It runs entirely in the browser and needs no internet connection.
+Or download `crimson-checker.html`, `eve-data.js` and `wh-data.js` into the same folder and open the HTML file. It runs entirely in the browser and needs no internet connection.
 
 ## What it does
 
 - Calculates the fit's EHP, resists, local repair, capacitor (including a cap simulation under neuts), paper DPS and fitting from CCP's static data, with all skills at V.
 - Compares that against the event NPCs' real damage, damage types, neuts, HP and resists.
-- "Correct my fit" tries module and rig swaps, recalculates each one, and keeps those that improve survival and still fit.
+- "Correct my fit" rebuilds the tank and capacitor side of any pasted fit until it survives every wave of the chosen site. It swaps modules and rigs, fills empty slots, and recalculates every change. It tries Tech II first, then faction, then deadspace, keeps the tank type the fit already has, and never touches weapons or drones. If the hull cannot pass, it says so and shows the best fit it found.
+
+## Wormhole sites (C3–C6)
+
+The Site dropdown also lists the four combat anomalies of each wormhole class from C3 to C6. Pick one and a Wave dropdown appears; the hardest wave is selected by default and the slider starts at 100%, since a whole Sleeper wave shoots you.
+
+- Sleeper stats are the real values from ESI; wave layouts follow the EVE University wiki. Spawns the wiki lists as "possible" are counted.
+- Sentry towers are counted only in the first wave. Capital escalation waves are not included.
+- Rebuild `wh-data.js` with `python tools/build_wh.py` (needs internet, no SDE download).
 
 ## Limits
 
