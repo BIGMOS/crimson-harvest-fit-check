@@ -1,10 +1,10 @@
-# Crimson Harvest & Wormhole Site Fit Check
+# Crimson Harvest, Wormhole Site & PvP Fit Check
 
-Paste an EVE Online fit (EFT format) and see whether it is likely to survive the Crimson Harvest event sites (Tetrimon Base and Crimson Gauntlet) or the C3–C6 wormhole combat anomalies.
+Paste an EVE Online fit (EFT format) and see whether it is likely to survive the Crimson Harvest event sites (Tetrimon Base and Crimson Gauntlet), the C3–C6 wormhole combat anomalies, or PvP against the ships that most often kill your hull.
 
 **Use it:** https://bigmos.github.io/crimson-harvest-fit-check/
 
-Or download `crimson-checker.html`, `eve-data.js` and `wh-data.js` into the same folder and open the HTML file. It runs entirely in the browser and needs no internet connection.
+Or download `crimson-checker.html`, `eve-data.js` and `wh-data.js` into the same folder and open the HTML file. It runs entirely in the browser. Only the PvP check needs an internet connection.
 
 ## What it does
 
@@ -19,6 +19,16 @@ The Site dropdown also lists the four combat anomalies of each wormhole class fr
 - Sleeper stats are the real values from ESI; wave layouts follow the EVE University wiki. Spawns the wiki lists as "possible" are counted.
 - Sentry towers are counted only in the first wave. Capital escalation waves are not included.
 - Rebuild `wh-data.js` with `python tools/build_wh.py` (needs internet, no SDE download).
+
+## PvP check
+
+You never know the other pilot's fit, so the PvP options in the Site dropdown work it out from zKillboard instead. Pick wormhole space, lowsec, nullsec, highsec or everywhere, paste a fit and press Calculate.
+
+- It loads the recent losses of your hull, finds the hulls that did most of the killing, and gives each the fit it most typically flies (taken from that hull's own recent losses).
+- Your fit duels each of them one on one with the same engine: who dies first, and by how much.
+- It also shows how the hull usually dies (solo or gang, typical gang size, damage taken), what most pilots of the hull fit that you do not, and which of your modules are almost never used on it in PvP.
+- "Correct my fit" works here too and tries to win every common matchup.
+- This part needs an internet connection. It is paper numbers: no range, speed, tracking or kiting, and killmails only show fits that died.
 
 ## Limits
 

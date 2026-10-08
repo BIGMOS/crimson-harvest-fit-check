@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Crimson Harvest &amp; Wormhole Site Fit Check</title>
+<title>Crimson Harvest, Wormhole Site &amp; PvP Fit Check</title>
 <style>
 :root{--bg:#0f1115;--card:#181b22;--fg:#e6e8ee;--mut:#8b91a1;--acc:#d33c3c;--ok:#3cc47c;--warn:#e0b030;--bad:#e05050;--line:#2a2f3a}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,Segoe UI,sans-serif;max-width:1100px;margin:auto}
@@ -22,8 +22,8 @@ label.m{display:flex;gap:6px;align-items:center;font-size:12px}
 .wtxt{color:var(--warn)}.btxt{color:var(--bad)}
 @media(max-width:600px){body{padding:12px}}
 </style></head><body>
-<h1>Crimson Harvest &amp; Wormhole Site Fit Check</h1>
-<div class="mut">Event: 6 Oct – 3 Nov 2026 · Blood Raiders invading Pochven · Sites: Crimson Gauntlet (Blood Raiders), Tetrimon Base (Order of St. Tetrimon) · Also: C3–C6 wormhole combat anomalies (Sleepers)</div>
+<h1>Crimson Harvest, Wormhole Site &amp; PvP Fit Check</h1>
+<div class="mut">Event: 6 Oct – 3 Nov 2026 · Blood Raiders invading Pochven · Sites: Crimson Gauntlet (Blood Raiders), Tetrimon Base (Order of St. Tetrimon) · Also: C3–C6 wormhole combat anomalies (Sleepers) · PvP check against the ships that really kill your hull (zKillboard)</div>
 
 <div class="card"><h2>1. Paste your fit (EFT format) and press Calculate</h2>
 <textarea id="fit" placeholder="[Ship, Fit name]&#10;Low slot modules...&#10;&#10;Mid slot modules...&#10;&#10;High slot modules...&#10;&#10;Rigs...&#10;&#10;Drones x5&#10;&#10;Cargo / ammo x1000"></textarea>
@@ -46,6 +46,7 @@ label.m{display:flex;gap:6px;align-items:center;font-size:12px}
 <li><b>Fit stats</b> are calculated from CCP's official static data (<span id="sdever"></span>) with every skill at level V, no implants, boosters, fleet bursts or overheating. The same rules the game uses are applied generically, so any ship, module, rig, charge, drone or subsystem can be pasted.</li>
 <li><b>Not modelled:</b> Reactive Armor Hardener adaptation (kept at its even base resists), Tech 3 destroyer modes, spool-up on Triglavian weapons (base damage shown), fighters, weapon tracking / missile application and range. DPS is the paper figure.</li>
 <li><b>NPC stats</b> (damage, damage types, neuts, HP, resists) are the real values for these NPC ships from the same static data. <b>Which ships and how many spawn per room</b> comes from the EVE University wiki's 2023 write-up, the closest documented layout. How many of them shoot you at the same time is the main uncertainty, so it is a slider: 60% is my default guess, 100% is the worst case. Drifter / Rogue Drone / Triglavian rift escalations are not included.</li>
+<li><b>PvP check</b> needs an internet connection: it asks zKillboard for the recent losses of your hull, finds the hulls that did most of the killing, and gives each one the fit it most typically flies (taken from that hull's own recent losses). Your fit then duels each of them with the same engine. It is paper numbers only: no range, speed, tracking, kiting, overheating, drugs, implants or fleet boosts, and it assumes both ships simply shoot until one dies. Losses only show fits that died, so "typical" means what people fly, not what wins. Most real kills are gangs, which is why the gang size and how long you last against one are shown separately.</li>
 <li><b>Wormhole sites (C3–C6)</b> use the Sleepers' real stats from ESI and the wave layouts on the EVE University wiki. Each wave is checked on its own; the hardest one is picked by default and the slider starts at 100%, because a Sleeper wave all shoots you. Spawns the wiki lists as "possible" are counted. Sentry towers are counted only in the first wave, so add margin if you leave them up. Capital escalation waves are not included. Remote repairs between Sleepers slow your clear time and are included in it.</li></ul></div>
 
 <script src="eve-data.js"></script>
@@ -241,7 +242,8 @@ let WAVE_OV=null;
 const curWave=()=>WAVE_OV!==null?WAVE_OV:Math.min(+$('wave').value||0,SITES[$('site').value].waves.length-1);
 const curShips=()=>SITES[$('site').value].waves[curWave()];
 const rawOf=ships=>ships.reduce((a,x)=>a+x.cnt*x.tur.concat(x.mis).reduce((p,q)=>p+q,0),0);
-function siteLabel(){const s=SITES[$('site').value];return s.name+(s.waves.length>1?`, wave ${curWave()+1}`:'');}
+const wn=(i,s=SITES[$('site').value])=>s.waveNames?s.waveNames[i]:`wave ${i+1}`;
+function siteLabel(){const s=SITES[$('site').value];return s.name+(s.pvp||s.waves.length>1?`, ${wn(curWave())}`:'');}
 function siteCounts(site,full){const k=full?1:(+$('scale').value||60)/100;return curShips().map(x=>x.cnt*k);}
 function siteLoad(site,full){const s={ships:curShips()},n=siteCounts(site,full);const d=[0,0,0,0];let neut=0;
  s.ships.forEach((x,i)=>{for(let j=0;j<4;j++)d[j]+=n[i]*(x.tur[j]+x.mis[j]);neut+=n[i]*x.neut;});
@@ -255,8 +257,9 @@ function evalFit(F,fast){const site=$('site').value,st=stats(F),typ=siteLoad(sit
  const neutT=typ.neut*st.cap.neutRes,neutF=full.neut*st.cap.neutRes;const H=fast?1200:1500,dt=fast?0.25:0.2;
  const capNo=capSim(F,st,0,H,dt),capNeut=capSim(F,st,neutT,H,dt),capFull=capSim(F,st,neutF,H,dt);
  const dmix=st.dps?st.dmg.map(x=>x/st.dps):[.25,.25,.25,.25];
- const clearOf=fullRoom=>{const n=siteCounts(site,fullRoom),sh=curShips();const e=sh.reduce((a,x,i)=>a+n[i]*npcEhp(x,dmix),0),r=sh.reduce((a,x,i)=>a+n[i]*(x.rep+(x.rrep||0)),0);
-  return{ehp:e,t:st.dps>r*0.5?e/Math.max(st.dps-r*0.25,1):Infinity};};
+ const clearOf=fullRoom=>{const n=siteCounts(site,fullRoom),sh=curShips();let e=0,r=0,rp=0;
+  sh.forEach((x,i)=>{const eh=npcEhp(x,dmix);e+=n[i]*eh;if(x.pc)rp+=n[i]*x.rep*eh/((x.hp[0]+x.hp[1]+x.hp[2])||1);else r+=n[i]*(x.rep+(x.rrep||0));});
+  return{ehp:e,t:st.dps>r*0.5&&st.dps>rp?e/Math.max(st.dps-r*0.25-rp,1):Infinity};};
  const cT=clearOf(false),cF=clearOf(true);const clear=cT.t,waveEhp=cT.ehp;
  const capDep=F.modules.some(m=>m.active&&(hasEff(m,'shieldBoosting')||hasEff(m,'armorRepair')||hasEff(m,'structureRepair')||hasEff(m,'fueledArmorRepair')||/Hardener/.test(grpName(m.id))));
  // how long you stay alive if nothing dies: tank shortfall eats the buffer; once cap is gone only passive regen is left
@@ -270,10 +273,82 @@ function evalFit(F,fast){const site=$('site').value,st=stats(F),typ=siteLoad(sit
  else{lvl='bad';verdict='Likely to die';
   if(!isFinite(clear))why.push('not enough DPS to kill the wave');else if(net<0)why.push('the wave kills you before you can clear it');
   if(capDep&&!capNeut.stable&&capNeut.lasts<1.5*clear)why.push('cap fails under neuts before the wave is cleared');if(!why.length)why.push('you die before the wave does');}
+ if(SITES[site].pvp){why.length=0; // a duel: whoever runs out of hit points first loses
+  if(!isFinite(clear)&&!isFinite(ttl)){lvl='warn';verdict='Stalemate';why.push('neither ship can break the other');}
+  else if(isFinite(clear)&&ttl>=1.5*clear){lvl='ok';verdict='Likely wins';}
+  else if(isFinite(clear)&&ttl>=0.75*clear){lvl='warn';verdict='Close fight';why.push('you both die at about the same time');}
+  else{lvl='bad';verdict='Likely loses';why.push(isFinite(clear)?'they kill you first':'you cannot break their tank');if(capDep&&!capNeut.stable&&capNeut.lasts<ttl+1)why.push('their neuts shut your tank down');}}
  if(st.fitProblems.length){why.push('fit is not valid as pasted');if(lvl==='ok'){lvl='warn';verdict='Marginal';}}
  const rank={bad:0,warn:1,ok:2}[lvl];const r1=isFinite(clear)?Math.min(ttl/clear,12):0,r2=isFinite(cF.t)?Math.min(ttlFull/cF.t,12):0;
  const score=rank*1e5+r1*1000+r2*600+Math.max(-500,Math.min(netFull,300))*0.3+Math.min(st.dps,2000)*0.05+(st.ewar.web?40:0)+(st.ewar.point?10:0)-(st.fitProblems.length?1e7:0);
  return{F,st,site,typ,full,holds,layer,ehp,capNo,capNeut,capFull,neutT,neutF,clear,clearFull:cF.t,waveEhp,net,netFull,ttl,ttlFull,lvl,rank,verdict,why,score,capDep,burst:st.burst[layer]/resOn(layer,typ.mix)};}
+
+// ---------------- PvP: opponents from zKillboard ----------------
+// The other pilot's fit is never known, so the opponents are worked out from killboard data: the hulls that most often
+// kill the pasted hull, each in the fit that hull most typically flies (taken from its own recent losses).
+const PVP_SPACES={pvpw:['w-space/','wormhole space'],pvpl:['lowsec/','low security space'],pvpn:['nullsec/','null security space'],pvph:['highsec/','high security space'],pvpa:['','all of New Eden']};
+if(EVE)for(const k in PVP_SPACES)SITES[k]={name:'PvP in '+PVP_SPACES[k][1],grp:'PvP (live data from zKillboard)',scale:100,pvp:{mod:PVP_SPACES[k][0],where:PVP_SPACES[k][1],ship:0},waves:[[]],waveNames:['']};
+const pvpPending=()=>{const s=SITES[$('site').value];return!!s.pvp&&(!FIT||s.pvp.ship!==FIT.shipId);};
+const ZK={};
+async function zkLosses(shipId,mod){const key=shipId+'/'+mod;if(ZK[key])return ZK[key];let r;
+ try{r=await fetch(`https://zkillboard.com/api/losses/shipTypeID/${shipId}/${mod}`);}catch(e){throw new Error('Could not reach zKillboard. The PvP check needs an internet connection.');}
+ if(!r.ok)throw new Error(`zKillboard answered ${r.status}. Try again in a minute.`);
+ const d=(await r.json()).filter(k=>k&&k.victim&&k.zkb&&!k.zkb.npc);await new Promise(res=>setTimeout(res,350));return ZK[key]=d;}
+function kmToFit(km){const sid=km.victim.ship_type_id;if(!TY[sid])return null;const fit={ship:TY[sid][0],name:'typical fit',shipId:sid,items:[]},slots={};
+ const mk=(id,kind,qty)=>({name:TY[id][0],id,qty,charge:null,chargeId:0,offline:false,kind});
+ for(const it of km.victim.items||[]){const id=it.item_type_id;if(!TY[id])continue;const c=catOf(id),f=it.flag,q=(it.quantity_destroyed||0)+(it.quantity_dropped||0)||1;
+  if((f>=11&&f<=34)||(f>=92&&f<=99)||(f>=125&&f<=132)){const sl=slots[f]=slots[f]||{};if(c===8)sl.ch=id;else if(c===7||c===32)sl.mod=id;}
+  else if(f===87&&c===18)fit.items.push(mk(id,'drone',q));
+  else if(f===5&&c===8)fit.items.push(mk(id,'cargo',q));}
+ for(const f in slots){const sl=slots[f];if(!sl.mod)continue;const m=mk(sl.mod,'module',0);if(sl.ch){m.chargeId=sl.ch;m.charge=TY[sl.ch][0];}fit.items.push(m);}
+ fit.mods=fit.items.filter(i=>i.kind==='module').map(i=>i.id);return fit;}
+// The most representative real fit: the one that shares the most modules with all the others.
+function typicalFit(fits){const fs=fits.filter(f=>f&&f.mods.length>=4).slice(0,60);if(!fs.length)return null;
+ const bags=fs.map(f=>{const m={};for(const id of f.mods)m[id]=(m[id]||0)+1;return m;});
+ const sim=(a,b)=>{let i=0,u=0;for(const k in a){i+=Math.min(a[k],b[k]||0);u+=Math.max(a[k],b[k]||0);}for(const k in b)if(!a[k])u+=b[k];return u?i/u:0;};
+ let best=0,bs=-1;bags.forEach((a,i)=>{let t=0;bags.forEach((b,j)=>{if(i!==j)t+=sim(a,b);});if(t>bs){bs=t;best=i;}});
+ const fit=cloneFit(fs[best]),cf={}; // weapons that were empty on the killmail get the ammo this hull usually loads
+ for(const f of fs)for(const it of f.items)if(it.kind==='module'&&it.chargeId){const m=cf[it.id]=cf[it.id]||{};m[it.chargeId]=(m[it.chargeId]||0)+1;}
+ for(const it of fit.items)if(it.kind==='module'&&!it.chargeId&&cf[it.id]){const c=+Object.keys(cf[it.id]).sort((a,b)=>cf[it.id][b]-cf[it.id][a])[0];it.chargeId=c;it.charge=TY[c][0];}
+ return fit;}
+function oppShip(fit,share){const F=build(fit,{}),st=stats(F),NA=AID['energyNeutralizerAmount'];let neut=0;
+ for(const m of F.modules){if(!m.active||!m.effects.some(e=>EF[e]&&/energyNeutralizer/i.test(EF[e][2])))continue;const cy=cycleOf(F,m);if(cy)neut+=F.get(m,NA)/cy.dur;}
+ const rep=st.rep.shield+st.rep.armor+st.rep.hull+st.passive,ew=[];if(st.ewar.web)ew.push('web');if(st.ewar.point)ew.push('point');if(neut)ew.push(`neut ${neut.toFixed(1)} GJ/s`);if(rep>20)ew.push(`repairs ${Math.round(rep)} HP/s`);
+ return{n:fit.ship,c:grpName(fit.shipId),cnt:1,pc:true,tur:st.dmg.map(x=>Math.round(x*10)/10),mis:[0,0,0,0],neut:Math.round(neut*10)/10,ew,rep,rrep:0,
+  hp:[st.hp.shield,st.hp.armor,st.hp.hull].map(Math.round),res:[st.res.shield,st.res.armor,st.res.hull],share,eft:fitToEFT(fit)};}
+async function ensurePvp(){const s=SITES[$('site').value];if(!s.pvp||!FIT||s.pvp.ship===FIT.shipId)return;const P=s.pvp,say=t=>$('status').textContent=t;
+ say(`Loading recent ${FIT.ship} losses from zKillboard…`);let mine=await zkLosses(FIT.shipId,P.mod),note='';
+ if(mine.length<10&&P.mod){mine=await zkLosses(FIT.shipId,'');note=`There are too few ${FIT.ship} losses in ${P.where}, so this uses losses from everywhere. `;}
+ const w={},sizes=[],dmg=[];let solo=0;
+ for(const k of mine){const at=(k.attackers||[]).filter(a=>a.character_id&&TY[a.ship_type_id]&&catOf(a.ship_type_id)===6&&grpName(a.ship_type_id)!=='Capsule');if(!at.length)continue;
+  sizes.push(at.length);dmg.push(k.victim.damage_taken||0);if(at.length===1)solo++;const tot=at.reduce((a,x)=>a+(x.damage_done||0),0)||1;
+  for(const a of at)w[a.ship_type_id]=(w[a.ship_type_id]||0)+(a.damage_done||0)/tot;}
+ if(!sizes.length)throw new Error(`zKillboard has no recent player kills of a ${FIT.ship}, so there is nothing to compare against.`);
+ const totW=Object.values(w).reduce((a,b)=>a+b,0)||1,opps=[];
+ for(const id of Object.keys(w).map(Number).sort((a,b)=>w[b]-w[a]).slice(0,7)){if(opps.length>=5)break;say(`Loading the typical ${TY[id][0]} fit…`);
+  let ls=await zkLosses(id,P.mod);if(ls.length<5&&P.mod)ls=await zkLosses(id,'');const tf=typicalFit(ls.map(kmToFit));if(!tf)continue;
+  const o=oppShip(tf,w[id]/totW);if(o.tur.reduce((a,b)=>a+b,0)>0)opps.push(o);}
+ if(!opps.length)throw new Error('Could not work out a typical fit for any of the hulls that kill this ship.');
+ const med=a=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]||0;},day=k=>String(k.killmail_time).slice(0,10);
+ Object.assign(P,{ship:FIT.shipId,note,n:sizes.length,from:day(mine[mine.length-1]),to:day(mine[0]),gang:med(sizes),solo:solo/sizes.length,dmg:med(dmg),fits:mine.map(kmToFit).filter(f=>f&&f.mods.length>=4)});
+ s.waves=opps.map(o=>[o]);s.waveNames=opps.map(o=>`1v1 against ${o.n} (${Math.round(o.share*100)}% of the damage)`);fillWaves();}
+const PVPKEY=[['Warp Scrambler','a warp scrambler or disruptor'],['Stasis Web','a stasis webifier'],['Propulsion Module','an afterburner or microwarpdrive'],['Energy Neutralizer','an energy neutralizer'],['Capacitor Booster','a capacitor booster'],['Damage Control','a damage control']];
+function pvpCard(ev){const s=SITES[ev.site],P=s.pvp,all=evalAllF(ev.F,true).all,n=P.fits.length||1,freq={};
+ for(const f of P.fits)for(const g of new Set(f.mods.map(id=>grpName(id))))freq[g]=(freq[g]||0)+1;
+ const mine=new Set(ev.F.modules.map(m=>GR[m.grp][0])),share=g=>(freq[g]||0)/n;
+ const missing=PVPKEY.filter(([g])=>share(g)>=0.5&&!mine.has(g)),odd=[...new Set(ev.F.modules.filter(m=>m.slot!=='rig'&&m.slot!=='sub'&&share(GR[m.grp][0])<0.05).map(m=>m.name))];
+ const tot=all.reduce((a,e,i)=>a+s.waves[i][0].share,0)||1,win=all.reduce((a,e,i)=>a+(e.lvl==='ok'?s.waves[i][0].share:0),0)/tot;
+ const raw=all.reduce((a,e,i)=>a+e.typ.raw*s.waves[i][0].share,0)/tot,short=raw*P.gang-ev.holds,gangT=short>0?ev.ehp/short:Infinity;
+ const lvl=win>=0.6&&!missing.length?'ok':win>=0.3||(win>=0.6&&missing.length)?'warn':'bad';
+ const head={ok:'Good PvP fit for this hull',warn:'Workable for PvP, with weak spots',bad:'Not a good PvP fit'}[lvl];
+ const li=[`Against the hulls that most often kill a ${ev.F.ship.name}, one on one, it wins ${all.filter(e=>e.lvl==='ok').length} of ${all.length} matchups (${Math.round(win*100)}% by how often you would meet them).`,
+  `How a ${ev.F.ship.name} usually dies: ${Math.round(P.solo*100)}% of losses were to a single ship; the typical kill had <b>${P.gang}</b> ships on it. Against ${P.gang} average attackers at once this fit lasts <b>${fmtT(gangT)}</b>.`,
+  `The typical lost ${ev.F.ship.name} took ${fmt(P.dmg)} damage before dying. Your fit has ${fmt(ev.st.ehpOmni)} EHP${ev.st.ehpOmni>=P.dmg?'':', which is less than that'}.`];
+ if(missing.length)li.push(`<span class="wtxt">Missing what most pilots of this hull fit:</span> `+missing.map(([g,t])=>`${t} (${Math.round(share(g)*100)}% have one)`).join(', ')+'.');
+ if(odd.length)li.push(`<span class="wtxt">Almost never seen on this hull in PvP (under 5% of fits):</span> ${odd.map(esc).join(', ')}.`);
+ return`<div class="v ${lvl}">${head}</div><div class="mut">${P.note}Based on ${P.n} ${esc(ev.F.ship.name)} losses in ${P.note?'all of New Eden':P.where}, ${P.from} to ${P.to}, from zKillboard. Losses only show fits that died, so this is what people fly, not what wins.</div><ul>${li.map(x=>`<li>${x}</li>`).join('')}</ul>
+ <div class="tw"><table><tr><th>Opponent (typical fit)</th><th class="n">Share of damage</th><th class="n">Their DPS</th><th class="n">Their EHP</th><th class="n">You die in</th><th class="n">They die in</th><th>Result</th></tr>${all.map((e,i)=>{const o=s.waves[i][0];return`<tr><td>${esc(o.n)}</td><td class="n">${Math.round(o.share*100)}%</td><td class="n">${fmt(e.typ.raw)}</td><td class="n">${fmt(e.waveEhp)}</td><td class="n">${fmtT(e.ttl)}</td><td class="n">${fmtT(e.clear)}</td><td class="${e.lvl==='ok'?'':e.lvl==='warn'?'wtxt':'btxt'}">${e.verdict}</td></tr>`;}).join('')}</table></div>
+ <h3>Selected matchup</h3>`;}
 
 // ---------------- UI ----------------
 let FIT=null,LAST=null,ACTIVE={};
@@ -281,16 +356,19 @@ const fmt=(x,d=0)=>isFinite(x)?x.toLocaleString(undefined,{maximumFractionDigits
 const pct=x=>((1-x)*100).toFixed(1)+'%';
 function fmtT(t){if(t===null||t===undefined)return'—';if(!isFinite(t))return'indefinitely';const m=Math.floor(t/60),s=Math.round(t%60);return m?`${m}m ${s}s`:`${s}s`;}
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-function renderSite(){const s={ships:curShips()},n=siteCounts($('site').value,false),k=1;
- $('site-data').innerHTML=`<b>${siteLabel()}</b> <span class="mut">NPC stats are real values from the game data. "At once" follows the slider above: the share of the room shooting you at the same time.</span>
+function renderSite(){if(pvpPending()){$('site-data').innerHTML='<span class="mut">Paste a fit and press Calculate. The opponents are then loaded from zKillboard for your hull: the ships that most often kill it, each in its typical fit.</span>';return;}
+ const pv=SITES[$('site').value].pvp,s={ships:curShips()},n=siteCounts($('site').value,false),k=1;
+ $('site-data').innerHTML=`<b>${siteLabel()}</b> <span class="mut">${pv?'Stats of the typical fit this hull flies, worked out from its recent losses on zKillboard and calculated with all skills at V.':'NPC stats are real values from the game data. "At once" follows the slider above: the share of the room shooting you at the same time.'}</span>
  <div class="tw"><table><tr><th>Ship</th><th>Class</th><th class="n">Max</th><th class="n">At once</th><th class="n">DPS each</th><th>Dmg EM/Th/Kin/Exp</th><th class="n">HP (S/A/H)</th><th>EWAR</th></tr>`+
- s.ships.map((x,i)=>{const d=x.tur.map((v,j)=>v+x.mis[j]),t=d.reduce((a,b)=>a+b,0);return`<tr><td>${x.n}</td><td>${x.c}</td><td class="n">${x.cnt}</td><td class="n">${fmt(n[i],1)}</td><td class="n">${fmt(t*k)}</td><td>${t?d.map(v=>Math.round(v/t*100)).join('/'):'—'}</td><td class="n">${x.hp.map(h=>fmt(h)).join(' / ')}</td><td>${x.ew.join(', ')||'—'}</td></tr>`;}).join('')+'</table></div>';}
-function run(){if(!EVE){$('status').innerHTML='<span class="btxt">eve-data.js is missing. Keep it in the same folder as this page.</span>';return;}
- try{ACTIVE={};FIT=parseEFT($('fit').value);const missing=resolveFit(FIT);
+ s.ships.map((x,i)=>{const d=x.tur.map((v,j)=>v+x.mis[j]),t=d.reduce((a,b)=>a+b,0);return`<tr><td>${x.n}</td><td>${x.c}</td><td class="n">${x.cnt}</td><td class="n">${fmt(n[i],1)}</td><td class="n">${fmt(t*k)}</td><td>${t?d.map(v=>Math.round(v/t*100)).join('/'):'—'}</td><td class="n">${x.hp.map(h=>fmt(h)).join(' / ')}</td><td>${x.ew.join(', ')||'—'}</td></tr>`;}).join('')+'</table></div>'+(pv?s.ships.map(x=>`<details><summary class="mut">Typical ${esc(x.n)} fit used for this matchup</summary><textarea readonly>${esc(x.eft)}</textarea></details>`).join(''):'');}
+async function run(){if(!EVE){$('status').innerHTML='<span class="btxt">eve-data.js is missing. Keep it in the same folder as this page.</span>';return;}
+ try{ACTIVE={};FIT=parseEFT($('fit').value);const missing=resolveFit(FIT);await ensurePvp();renderSite();
   $('status').innerHTML=missing.length?`<span class="wtxt">Not recognised and ignored: ${missing.map(esc).join(', ')}</span>`:'All items recognised.';recompute();}
  catch(e){$('status').innerHTML=`<span class="btxt">${esc(e.message)}</span>`;console.error(e);}}
 function recompute(){const F=build(FIT,ACTIVE);LAST=F;const ev=evalFit(F);renderModules(F);renderStats(ev);renderVerdict(ev);$('fixout').innerHTML='';}
-function refresh(){renderSite();if(LAST){const ev=evalFit(LAST);renderStats(ev);renderVerdict(ev);$('fixout').innerHTML='';}}
+async function refresh(){if(SITES[$('site').value].pvp&&FIT){try{await ensurePvp();$('status').textContent='Killboard data loaded.';}catch(e){$('status').innerHTML=`<span class="btxt">${esc(e.message)}</span>`;}}
+ renderSite();if(pvpPending()){$('statscard').style.display='none';$('verdictcard').style.display='none';return;}
+ if(LAST){const ev=evalFit(LAST);renderStats(ev);renderVerdict(ev);$('fixout').innerHTML='';}}
 function renderModules(F){const order={hi:0,mid:1,lo:2,rig:3,sub:4,other:5};
  const rows=[...F.modules].sort((a,b)=>order[a.slot]-order[b.slot]).map(m=>{const cy=m.active?cycleOf(F,m):null;
   const cap=cy&&cy.need>0?` <span class="mut">${(cy.need/cy.dur).toFixed(1)} GJ/s</span>`:'';
@@ -317,10 +395,10 @@ function renderVerdict(ev){$('verdictcard').style.display='';const s=ev.st,name=
  notes.push(`If nothing died you would stay alive <b>${fmtT(ev.ttl)}</b> at ${$('scale').value}% and <b>${fmtT(ev.ttlFull)}</b> against the full room (tank shortfall plus cap running out).`);
  notes.push(`Capacitor with no neuts: ${ev.capNo.stable?`stable at ${ev.capNo.minPct.toFixed(1)}%`:`lasts ${fmtT(ev.capNo.lasts)}`}. Under this site's neuts (${fmt(ev.typ.neut,1)} GJ/s${s.cap.neutRes<0.999?`, ${fmt(ev.neutT,1)} after your neut resistance`:''}): <b>${ev.capNeut.stable?`stable at ${ev.capNeut.minPct.toFixed(1)}%`:`lasts ${fmtT(ev.capNeut.lasts)}`}</b>; full room: ${ev.capFull.stable?'stable':`lasts ${fmtT(ev.capFull.lasts)}`}.`);
  notes.push(s.dps?`Time to clear that many ships at ${fmt(s.dps)} paper DPS: about <b>${fmtT(ev.clear)}</b>, full room ${fmtT(ev.clearFull)} (real time is longer against small ships).`:'<span class="wtxt">The fit shows no DPS, so the wave never dies.</span>');
- if(!s.ewar.web&&!s.ewar.point)notes.push('No web or point fitted. The NPCs web and point you, so they choose the range.');
- if(SITES[ev.site].waves.length>1)notes.unshift('Whole site: '+evalAllF(ev.F,true).all.map(e=>`<span class="${e.lvl==='ok'?'':e.lvl==='warn'?'wtxt':'btxt'}">wave ${e.wave+1} ${e.verdict.toLowerCase()}</span>`).join(' · ')+'.');
+ if(!s.ewar.web&&!s.ewar.point)notes.push(SITES[ev.site].pvp?'No web or point fitted. The other pilot chooses the range and can leave whenever the fight turns.':'No web or point fitted. The NPCs web and point you, so they choose the range.');
+ if(SITES[ev.site].waves.length>1&&!SITES[ev.site].pvp)notes.unshift('Whole site: '+evalAllF(ev.F,true).all.map(e=>`<span class="${e.lvl==='ok'?'':e.lvl==='warn'?'wtxt':'btxt'}">wave ${e.wave+1} ${e.verdict.toLowerCase()}</span>`).join(' · ')+'.');
  const recs=ev.lvl==='ok'?[]:recommend(ev);
- $('out').innerHTML=`<div class="v ${ev.lvl}">${name}: ${ev.verdict}${ev.why.length?' ('+ev.why.join('; ')+')':''}</div><ul>${notes.map(n=>`<li>${n}</li>`).join('')}</ul>`+(recs.length?`<h3>What to change</h3><ul>${recs.map(n=>`<li>${n}</li>`).join('')}</ul>`:'');}
+ $('out').innerHTML=(SITES[ev.site].pvp?pvpCard(ev):'')+`<div class="v ${ev.lvl}">${name}: ${ev.verdict}${ev.why.length?' ('+ev.why.join('; ')+')':''}</div><ul>${notes.map(n=>`<li>${n}</li>`).join('')}</ul>`+(recs.length?`<h3>What to change</h3><ul>${recs.map(n=>`<li>${n}</li>`).join('')}</ul>`:'');}
 function recommend(ev){const r=[],s=ev.st;
  if(s.fitProblems.length)r.push('Fix the fitting problems first: '+s.fitProblems.join('; ')+'.');
  if(ev.capDep&&!ev.capFull.stable&&ev.capFull.lasts<Math.max(600,2*ev.clearFull))r.push(`Cap lasts ${fmtT(ev.capFull.lasts)} under a full room of neuts. A cap booster with charges, a cap battery (adds neut resistance), cap rigs, or killing the neuting ships first all help.`);
@@ -388,12 +466,12 @@ async function correct(){if(!FIT||!LAST)return;const btn=$('fixbtn');btn.disable
    for(let round=0;round<12&&ev.lvl!=='ok';round++){const b=await searchStep(cur,ev,cands,`${TIERS[tier]} modules, change ${changes.length+1}`,1);if(!b)break;
     cur=b.trial;ev=b.ev;tierUsed=tier;b.steps.forEach((st,i)=>changes.push(Object.assign({ev:i===b.steps.length-1?b.ev:null},st)));}}
   $('fixnote').textContent=noteTxt;
-  const line=e=>`${e.verdict}${multi?` (hardest: wave ${e.wave+1})`:''} · tank ${fmt(e.holds)} DPS · cap under neuts ${e.capNeut.stable?'stable':fmtT(e.capNeut.lasts)} · alive ${fmtT(e.ttl)} / full room ${fmtT(e.ttlFull)} · ${fmt(e.st.dps)} DPS`;
-  const where=multi?`every wave of ${site.name}`:site.name;
+  const line=e=>`${e.verdict}${multi?` (hardest: ${wn(e.wave)})`:''} · tank ${fmt(e.holds)} DPS · cap under neuts ${e.capNeut.stable?'stable':fmtT(e.capNeut.lasts)} · alive ${fmtT(e.ttl)} / full room ${fmtT(e.ttlFull)} · ${fmt(e.st.dps)} DPS`;
+  const where=site.pvp?`every common matchup in ${site.name}`:multi?`every wave of ${site.name}`:site.name;
   if(!changes.length){$('fixout').innerHTML=`<div class="v ${ev.lvl}" style="font-size:14px">${ev.lvl==='ok'?`Nothing to fix. This fit already passes ${where}.`:`No change of modules or rigs, up to deadspace, makes this hull survive ${where}. It needs a different hull, a fleet, or an easier site.`}</div>`;}
   else{const eft=fitToEFT(cur);const failing=ev.all.filter(e=>e.lvl!=='ok');
    const head=ev.lvl==='ok'?`<div class="v ok" style="font-size:14px">The corrected fit passes ${where}, using ${tierUsed?`up to ${TIERS[tierUsed]}`:'Tech II'} modules.</div>`
-    :`<div class="v ${ev.lvl}" style="font-size:14px">This is the best found for this hull with module and rig changes, up to deadspace${ev.rank>start.rank?', and it is better than before':''}, but it still does not pass ${multi?failing.map(e=>`wave ${e.wave+1} (${e.verdict.toLowerCase()})`).join(', ')+` of ${site.name}`:site.name}. ${ev.capDep&&!ev.capNeut.stable?'The neuts drain the capacitor faster than this hull can replace it.':ev.net<0?`The wave does ${fmt(-ev.net)} more DPS than the best tank found for this hull.`:'The margin against a full room is too small.'}</div>`;
+    :`<div class="v ${ev.lvl}" style="font-size:14px">This is the best found for this hull with module and rig changes, up to deadspace${ev.rank>start.rank?', and it is better than before':''}, but it still does not pass ${multi?failing.map(e=>`${wn(e.wave)} (${e.verdict.toLowerCase()})`).join(', ')+` of ${site.name}`:site.name}. ${ev.capDep&&!ev.capNeut.stable?'The neuts drain the capacitor faster than this hull can replace it.':ev.net<0?`The wave does ${fmt(-ev.net)} more DPS than the best tank found for this hull.`:'The margin against a full room is too small.'}</div>`;
    const cnt=f=>{const m={};for(const it of f.items)if(it.id&&(it.kind==='module'||it.kind==='cargo')){const k=(it.kind==='cargo'?'cargo':slotOf(it.id))+'|'+it.name;m[k]=(m[k]||0)+(it.kind==='cargo'?it.qty||1:1);}return m;};
    const c0=cnt(FIT),c1=cnt(cur),diff=(x,y,sl)=>Object.keys(x).filter(k=>k.startsWith(sl+'|')&&x[k]>(y[k]||0)).map(k=>`${x[k]-(y[k]||0)}× ${esc(k.slice(sl.length+1))}`).join('<br>');
    const rows=[['mid','Mid slots'],['lo','Low slots'],['rig','Rigs'],['cargo','Cargo']].map(([sl,nm])=>[nm,diff(c0,c1,sl),diff(c1,c0,sl)]).filter(r=>r[1]||r[2]);
@@ -409,9 +487,9 @@ async function correct(){if(!FIT||!LAST)return;const btn=$('fixbtn');btn.disable
 // ---------------- wiring ----------------
 $('calc').onclick=run;$('fixbtn').onclick=correct;
 $('clear').onclick=()=>{$('fit').value='';FIT=LAST=null;ACTIVE={};$('modlist').innerHTML='';$('status').textContent='';$('statscard').style.display='none';$('verdictcard').style.display='none';$('fixout').innerHTML='';$('fit').focus();};
-function fillWaves(){const s=SITES[$('site').value],raw=s.waves.map(rawOf),hard=raw.indexOf(Math.max(...raw));
- $('wave').innerHTML=s.waves.map((w,i)=>`<option value="${i}"${i===hard?' selected':''}>Wave ${i+1} · ${fmt(raw[i])} DPS${i===hard?' (hardest)':''}</option>`).join('');
- $('wavel').style.display=s.waves.length>1?'':'none';$('scale').value=s.scale;$('scalev').textContent=s.scale+'%';}
+function fillWaves(){const s=SITES[$('site').value],raw=s.waves.map(rawOf),hard=s.pvp?0:raw.indexOf(Math.max(...raw));
+ $('wave').innerHTML=s.waves.map((w,i)=>`<option value="${i}"${i===hard?' selected':''}>${s.pvp?s.waveNames[i]:`Wave ${i+1}`} · ${fmt(raw[i])} DPS${!s.pvp&&i===hard?' (hardest)':''}</option>`).join('');
+ $('wavel').style.display=s.waves.length>1||(s.pvp&&s.pvp.ship)?'':'none';$('wavel').firstChild.textContent=s.pvp?'Opponent ':'Wave ';$('scale').value=s.scale;$('scalev').textContent=s.scale+'%';}
 if(EVE){const grp={};for(const k in SITES)(grp[SITES[k].grp]=grp[SITES[k].grp]||[]).push(k);
  $('site').innerHTML=Object.keys(grp).map(g=>`<optgroup label="${g}">${grp[g].map(k=>`<option value="${k}">${SITES[k].name}</option>`).join('')}</optgroup>`).join('');fillWaves();}
 $('site').onchange=()=>{fillWaves();refresh();};$('wave').onchange=refresh;$('scale').oninput=()=>{$('scalev').textContent=$('scale').value+'%';refresh();};
