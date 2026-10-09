@@ -6,6 +6,8 @@ Paste an EVE Online fit (EFT format) and see whether it is likely to survive the
 
 Or download `crimson-checker.html`, `eve-data.js` and `wh-data.js` into the same folder and open the HTML file. It runs entirely in the browser. Only the PvP check needs an internet connection.
 
+> **Important:** a result only covers the site you selected. A fit that passes one site can die in another, so check the fit against every site you plan to run. To test whole wormhole classes in one go, tick C3 to C6 under the Correct my fit button.
+
 ## What it does
 
 - Calculates the fit's EHP, resists, local repair, capacitor (including a cap simulation under neuts), paper DPS and fitting from CCP's static data, with all skills at V.
