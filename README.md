@@ -1,12 +1,12 @@
 # Crimson Harvest, Wormhole Site & PvP Fit Check
 
+> **Important: the fit must be checked for each site.** A result only covers the site you selected. A fit that passes one site can die in another, so check the fit against every site you plan to run. To test whole wormhole classes in one go, tick C3 to C6 under the Correct my fit button.
+
 Paste an EVE Online fit (EFT format) and see whether it is likely to survive the Crimson Harvest event sites (Tetrimon Base and Crimson Gauntlet), the C3–C6 wormhole combat anomalies, or PvP against the ships that most often kill your hull.
 
 **Use it:** https://bigmos.github.io/crimson-harvest-fit-check/
 
 Or download `crimson-checker.html`, `eve-data.js` and `wh-data.js` into the same folder and open the HTML file. It runs entirely in the browser. Only the PvP check needs an internet connection.
-
-> **Important:** a result only covers the site you selected. A fit that passes one site can die in another, so check the fit against every site you plan to run. To test whole wormhole classes in one go, tick C3 to C6 under the Correct my fit button.
 
 ## What it does
 
