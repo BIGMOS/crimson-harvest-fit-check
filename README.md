@@ -12,6 +12,7 @@ Or download `crimson-checker.html`, `eve-data.js` and `wh-data.js` into the same
 - Compares that against the event NPCs' real damage, damage types, neuts, HP and resists.
 - "Correct my fit" rebuilds the tank and capacitor side of any pasted fit until it survives every wave of the chosen site. It swaps modules and rigs, fills empty slots, and recalculates every change. It tries Tech II first, then faction, then deadspace, keeps the tank type the fit already has, and never touches weapons or drones. If the hull cannot pass, it says so and shows the best fit it found.
 - "Cost effective" takes a fit that already passes and swaps each module for a cheaper one of the same kind, biggest saving first, for as long as every wave still passes. It needs an internet connection for prices (ESI average prices).
+- Both buttons normally work on the selected site. Tick C3, C4, C5 or C6 under them and the fit must also pass every wave of every site in those classes, so one fit can be corrected or made cheaper for, say, all C4 and C5 sites at once.
 
 ## Wormhole sites (C3–C6)
 
