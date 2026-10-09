@@ -37,7 +37,7 @@ label.m{display:flex;gap:6px;align-items:center;font-size:12px}
 
 <div class="card" id="statscard" style="display:none"><h2>2. Computed fit stats</h2><div id="stats"></div></div>
 <div class="card" id="verdictcard" style="display:none"><h2>3. Will it survive?</h2><div id="out"></div>
-<div class="row"><button id="fixbtn">Correct my fit</button> <span class="mut" id="fixnote">Rebuilds the tank and capacitor side of the fit until it survives every wave of the chosen site. Tries Tech II first, then faction, then deadspace, and recalculates every change.</span></div>
+<div class="row"><button id="fixbtn">Correct my fit</button> <button id="costbtn" class="sec">Cost effective</button> <span class="mut" id="fixnote">Rebuilds the tank and capacitor side of the fit until it survives every wave of the chosen site. Tries Tech II first, then faction, then deadspace, and recalculates every change. Cost effective does the opposite for a fit that already passes: it swaps in cheaper modules for as long as every wave still passes.</span></div>
 <div id="fixout"></div></div>
 
 <div class="card"><h2>Site data</h2><div id="site-data"></div></div>
@@ -79,7 +79,7 @@ const HP={shield:263,armor:265,hull:9};
 const DT=['EM','Thermal','Kinetic','Explosive'];
 const EXEMPT=new Set([6,8,16,20,32]);
 const PEN=i=>Math.exp(-Math.pow(i/2.67,2));
-const INACTIVE=/Micro Jump|Cloak|Cynosural|Smart ?Bomb|Salvager|Tractor Beam|Probe Launcher|Analyzer|Scanner|Bastion|Siege Module|Triage|Industrial Core|Assault Damage Control|Command Burst|Jump Portal|Jump Field|Warp Disruption Field|Interdiction|Bomb Launcher|Entosis|Clone Vat|Doomsday|Remote|Burst Projector|Zero-Point|Vorton Projector Oper/i;
+const INACTIVE=/Micro Jump|Cloak|Cynosural|Smart ?Bomb|Salvager|Tractor Beam|Probe Launcher|Analyzer|Scanner|Siege Module|Triage|Industrial Core|Assault Damage Control|Command Burst|Jump Portal|Jump Field|Warp Disruption Field|Interdiction|Bomb Launcher|Entosis|Clone Vat|Doomsday|Remote|Burst Projector|Zero-Point|Vorton Projector Oper/i;
 
 // ---------------- EFT parsing ----------------
 function parseEFT(txt){const lines=txt.replace(/ /g,' ').split(/\r?\n/).map(l=>l.trim());
@@ -125,7 +125,7 @@ function build(fit,activeMap){
   if(it.kind==='drone'){const d=new Item(it.id,'drone');d.qty=it.qty;F.drones.push(d);}
   else if(it.kind==='module'){const m=new Item(it.id,'module');m.idx=idx;m.online=!it.offline;m.slot=slotOf(it.id);
    m.activatable=m.effects.some(e=>EF[e]&&[1,2,3].includes(EF[e][0]));
-   m.active=m.online&&m.activatable&&(activeMap&&activeMap[idx]!==undefined?activeMap[idx]:!INACTIVE.test(grpName(it.id)+' '+m.name));
+   m.active=m.online&&m.activatable&&(activeMap&&activeMap[idx]!==undefined?activeMap[idx]:/^Bastion Module/.test(m.name)||!INACTIVE.test(grpName(it.id)+' '+m.name));
    if(it.chargeId&&catOf(it.chargeId)===8){const c=new Item(it.chargeId,'charge');c.module=m;m.charge=c;c.qty=Infinity;F.charges.push(c);}
    F.modules.push(m);}
   else if(it.kind==='cargo')F.cargo.push({id:it.id,qty:it.qty||1,name:it.name});});
@@ -484,8 +484,55 @@ async function correct(){if(!FIT||!LAST)return;const btn=$('fixbtn');btn.disable
  catch(e){$('fixout').innerHTML=`<span class="btxt">${esc(e.message)}</span>`;console.error(e);}
  btn.disabled=false;}
 
+// ---------------- Cost effective ----------------
+// For a fit that already passes: swaps modules for cheaper ones, biggest saving first, for as long as every wave still passes.
+let PRICES=null;
+async function loadPrices(){if(PRICES)return PRICES;let r;
+ try{r=await fetch('https://esi.evetech.net/latest/markets/prices/?datasource=tranquility');}catch(e){throw new Error('Could not load prices. The cost check needs an internet connection.');}
+ if(!r.ok)throw new Error(`The price list answered ${r.status}. Try again in a minute.`);
+ const pr={};for(const x of await r.json())pr[x.type_id]=x.average_price||x.adjusted_price||0;return PRICES=pr;}
+const costOf=fit=>fit.items.reduce((a,it)=>a+(it.id&&it.kind!=='cargo'?(PRICES[it.id]||0)*(it.kind==='drone'?it.qty||1:1):0),0);
+const isk=x=>x>=1e9?(x/1e9).toFixed(2)+' bil':Math.round(x/1e6)+' mil';
+const isWeapon=id=>TY[id][3].some(e=>EF[e]&&/^(turretFitted|launcherFitted)$/.test(EF[e][2]));
+// Cheaper stand-ins for one module: the same kind and size of module in another quality, so the layout of the fit stays as the pilot built it.
+function cheaperCands(it,shipId){const slot=slotOf(it.id),t=TY[it.id],sb=TY[shipId][2],eff=t[3].join(),pg=Math.max(t[2][30]||0,1),set=new Set();
+ for(const k in TY){const id=+k,c=TY[id];if(c[1]!==t[1]||tierOf(id)<0||c[3].join()!==eff||/^Capital |Civilian|s Modified /.test(c[0]))continue;
+  if(slot==='rig'?c[2][1547]!==sb[1547]:Math.max(c[2][30]||0,1)/pg>1.7||Math.max(c[2][30]||0,1)/pg<0.6)continue;set.add(id);}
+ return[...set];}
+async function cheapen(){if(!FIT||!LAST)return;const btn=$('costbtn');btn.disabled=true;const noteTxt=$('fixnote').textContent;
+ try{await loadPrices();let cur=cloneFit(FIT),ev=evalAll(cur,true);const site=SITES[$('site').value],multi=site.waves.length>1;
+  const where=site.pvp?`every common matchup in ${site.name}`:multi?`every wave of ${site.name}`:site.name;
+  if(ev.lvl!=='ok'||ev.st.fitProblems.length){$('fixout').innerHTML=`<div class="v warn" style="font-size:14px">This fit does not pass ${where} yet, so there is nothing to make cheaper. Press Correct my fit, load the result into the checker, then press Cost effective.</div>`;return;}
+  const start=costOf(cur);let tested=0,steps=0;
+  const pass=t=>{const w=evalWave(t,ev.wave,true);if(w.lvl!=='ok'||w.st.fitProblems.length)return null;const e=evalAll(t,true);return e.lvl==='ok'&&!e.st.fitProblems.length?e:null;};
+  for(let round=0;round<40;round++){const total=costOf(cur),min=Math.max(1e6,total*0.005),moves=[],seen=new Set();
+   cur.items.forEach((it,i)=>{if(!it.id||it.kind!=='module'||seen.has(it.id))return;seen.add(it.id);if(!['lo','mid','rig'].includes(slotOf(it.id))||isWeapon(it.id))return;const p0=PRICES[it.id]||0;
+    for(const cid of cheaperCands(it,cur.shipId)){const pc=PRICES[cid];if(pc&&cid!==it.id&&p0-pc>=min)moves.push({i,cid,save:p0-pc});}});
+   moves.sort((a,b)=>b.save-a.save);let best=null;
+   // among the swaps that save about as much as the biggest one that passes, keep the one that leaves the strongest fit
+   for(const mv of moves){if(best&&mv.save<best.save*0.95-2e6)break;const ap=applyMove(cur,mv,mv.cid);if(!ap)continue;const e=pass(ap.trial);
+    if(++tested%25===0){$('fixnote').textContent=`Cost effective: tested ${tested} swaps, saved ${isk(start-total)} so far…`;await new Promise(r=>setTimeout(r));}
+    if(e&&(!best||e.site>best.e.site))best={trial:ap.trial,e,save:best?best.save:mv.save};}
+   if(!best)break;cur=best.trial;ev=best.e;steps++;}
+  const end=costOf(cur);
+  if(!steps){$('fixout').innerHTML=`<div class="v ok" style="font-size:14px">No cheaper module keeps this fit passing ${where}. It is already cost effective at ${isk(start)} of modules.</div>`;return;}
+  const cnt=f=>{const m={};for(const it of f.items)if(it.id&&(it.kind==='module'||it.kind==='cargo')){const k=(it.kind==='cargo'?'cargo':slotOf(it.id))+'|'+it.name;m[k]=(m[k]||0)+(it.kind==='cargo'?it.qty||1:1);}return m;};
+  const c0=cnt(FIT),c1=cnt(cur),diff=(x,y,sl)=>Object.keys(x).filter(k=>k.startsWith(sl+'|')&&x[k]>(y[k]||0)).map(k=>`${x[k]-(y[k]||0)}× ${esc(k.slice(sl.length+1))} <span class="mut">${isk(PRICES[NAME[k.slice(sl.length+1).toLowerCase()]]||0)}</span>`).join('<br>');
+  const rows=[['mid','Mid slots'],['lo','Low slots'],['rig','Rigs'],['cargo','Cargo']].map(([sl,nm])=>[nm,diff(c0,c1,sl),diff(c1,c0,sl)]).filter(r=>r[1]||r[2]);
+  const thin=ev.all.map(e=>({e,m:e.full.raw?e.holds/e.full.raw:9})).sort((a,b)=>a.m-b.m)[0];
+  const margin=thin.m>=1?`The tank stays at least ${Math.round((thin.m-1)*100)}% above the incoming damage on every ${site.pvp?'matchup':'wave'}.`:`<span class="wtxt">On ${multi||site.pvp?wn(thin.e.wave):'this site'} the tank is ${fmt(thin.e.full.raw-thin.e.holds)} DPS below the full incoming damage; it passes because the buffer outlasts the fight (${fmtT(thin.e.ttlFull)} alive against ${fmtT(thin.e.clearFull)} to clear).</span>`;
+  $('fixout').innerHTML=`<div class="v ok" style="font-size:14px">Cheaper fit that still passes ${where}: ${isk(start)} → ${isk(end)} of modules, saving ${isk(start-end)}.</div>
+   <div class="mut">${margin} Prices are ESI average prices for modules, rigs and drones; the hull, ammo and cargo are not counted.</div>
+   <div class="tw"><table><tr><th></th><th>Take out</th><th>Put in</th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]||'—'}</td><td>${r[2]||'—'}</td></tr>`).join('')}</table></div>
+   <h3>Cost effective fit (EFT)</h3><textarea id="fixed" readonly>${esc(fitToEFT(cur))}</textarea>
+   <div class="row"><button id="copyfix">Copy fit</button><button id="loadfix" class="sec">Load into checker</button></div>`;
+  $('copyfix').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText($('fixed').value);$('copyfix').textContent='Copied';};
+  $('loadfix').onclick=()=>{$('fit').value=$('fixed').value;run();window.scrollTo(0,0);};}
+ catch(e){$('fixout').innerHTML=`<span class="btxt">${esc(e.message)}</span>`;console.error(e);}
+ finally{$('fixnote').textContent=noteTxt;btn.disabled=false;}}
+
 // ---------------- wiring ----------------
-$('calc').onclick=run;$('fixbtn').onclick=correct;
+$('calc').onclick=run;$('fixbtn').onclick=correct;$('costbtn').onclick=cheapen;
 $('clear').onclick=()=>{$('fit').value='';FIT=LAST=null;ACTIVE={};$('modlist').innerHTML='';$('status').textContent='';$('statscard').style.display='none';$('verdictcard').style.display='none';$('fixout').innerHTML='';$('fit').focus();};
 function fillWaves(){const s=SITES[$('site').value],raw=s.waves.map(rawOf),hard=s.pvp?0:raw.indexOf(Math.max(...raw));
  $('wave').innerHTML=s.waves.map((w,i)=>`<option value="${i}"${i===hard?' selected':''}>${s.pvp?s.waveNames[i]:`Wave ${i+1}`} · ${fmt(raw[i])} DPS${!s.pvp&&i===hard?' (hardest)':''}</option>`).join('');
