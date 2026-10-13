@@ -6,7 +6,7 @@ Paste an EVE Online fit (EFT format) and see whether it is likely to survive the
 
 **Use it:** https://bigmos.github.io/crimson-harvest-fit-check/
 
-Or download `crimson-checker.html`, `eve-data.js` and `wh-data.js` into the same folder and open the HTML file. It runs entirely in the browser. Only the PvP check needs an internet connection.
+Or download `crimson-checker.html`, `eve-data.js`, `wh-data.js` and `alpha-data.js` into the same folder and open the HTML file. It runs entirely in the browser. Only the PvP check needs an internet connection.
 
 ## What it does
 
@@ -31,8 +31,12 @@ You never know the other pilot's fit, so the PvP options in the Site dropdown wo
 - It loads the recent losses of your hull, finds the hulls that did most of the killing, and gives each the fit it most typically flies (taken from that hull's own recent losses).
 - Your fit duels each of them one on one with the same engine: who dies first, and by how much.
 - It also shows how the hull usually dies (solo or gang, typical gang size, damage taken), what most pilots of the hull fit that you do not, and which of your modules are almost never used on it in PvP.
-- "Correct my fit" works here too and tries to win every common matchup.
+- "Correct my fit" works here too. No fit beats everything, so it aims for the best win rate, weighted by how often each opponent is met. It stops at faction modules and may also upgrade drones, weapons and damage modules.
 - This part needs an internet connection. It is paper numbers: no range, speed, tracking or kiting, and killmails only show fits that died.
+
+## Alpha clone
+
+For pilots without an Omega account: press **I am an Alpha pilot** next to the Calculate button and the fit is calculated with the highest skill levels an Alpha clone can train, instead of all skills at V. Anything an Alpha cannot use is flagged, and "Correct my fit" swaps those items for ones an Alpha can use and only suggests modules an Alpha can fit. PvP opponents are still assumed to have all skills at V. The skill limits are in `alpha-data.js`, rebuilt with `python tools/build_alpha.py`.
 
 ## Limits
 
