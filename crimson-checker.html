@@ -257,8 +257,11 @@ function npcEhp(x,mix){let e=0;for(let l=0;l<3;l++){const r=x.res[l].reduce((a,v
 function evalFit(F,fast){const site=curSite(),st=stats(F),typ=siteLoad(site,false),full=siteLoad(site,true);
  const resOn=(l,mix)=>st.res[l].reduce((a,r,i)=>a+r*mix[i],0);
  const sus={shield:(st.rep.shield+st.passive)/resOn('shield',typ.mix),armor:st.rep.armor/resOn('armor',typ.mix),hull:st.rep.hull/resOn('hull',typ.mix)};
- const layer=sus.armor>sus.shield?(sus.hull>sus.armor?'hull':'armor'):(sus.hull>sus.shield?'hull':'shield');
- const holds=sus[layer];const ehp=st.ehp(typ.mix);const passiveHolds=layer==='shield'?st.passive/resOn('shield',typ.mix):0;
+ const susLayer=sus.armor>sus.shield?(sus.hull>sus.armor?'hull':'armor'):(sus.hull>sus.shield?'hull':'shield');
+ // A buffer fit has no repairer, so its tank type is read from what is fitted: plates and armor rigs make it an armor fit even though only the shield regenerates.
+ let layer=susLayer;if(!(st.rep.shield+st.rep.armor+st.rep.hull>0)){let a=0,sh=0;for(const m of F.modules){const g=GR[m.grp][0];if(CARMOR.has(g))a++;else if(CSHIELD.has(g))sh++;}
+  layer=a>sh?'armor':sh>a?'shield':['shield','armor','hull'].sort((x,y)=>st.eff(y,typ.mix)-st.eff(x,typ.mix))[0];}
+ const holds=sus[susLayer];const ehp=st.ehp(typ.mix);const passiveHolds=susLayer==='shield'?st.passive/resOn('shield',typ.mix):0;
  const neutT=typ.neut*st.cap.neutRes,neutF=full.neut*st.cap.neutRes;const H=fast?1200:1500,dt=fast?0.25:0.2;
  const capNo=capSim(F,st,0,H,dt),capNeut=capSim(F,st,neutT,H,dt),capFull=capSim(F,st,neutF,H,dt);
  const dmix=st.dps?st.dmg.map(x=>x/st.dps):[.25,.25,.25,.25];
