@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Crimson Harvest, Wormhole Site &amp; PvP Fit Check</title>
+<title>Event, Wormhole Site &amp; PvP Fit Check</title>
 <style>
 :root{--bg:#0f1115;--card:#181b22;--fg:#e6e8ee;--mut:#8b91a1;--acc:#d33c3c;--ok:#3cc47c;--warn:#e0b030;--bad:#e05050;--line:#2a2f3a}
 *{box-sizing:border-box}body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,Segoe UI,sans-serif;max-width:1100px;margin:auto}
@@ -22,9 +22,9 @@ label.m{display:flex;gap:6px;align-items:center;font-size:12px}
 .wtxt{color:var(--warn)}.btxt{color:var(--bad)}
 @media(max-width:600px){body{padding:12px}}
 </style></head><body>
-<h1>Crimson Harvest, Wormhole Site &amp; PvP Fit Check</h1>
-<div class="v warn" style="font-size:13px;font-weight:600"><b>Important: the fit must be checked for each site.</b> A result only covers the site you select below. A fit that passes one site can die in another, so check the fit against every site you plan to run. To test whole wormhole classes in one go, tick C3 to C6 under the Correct my fit button.</div>
-<div class="mut">Event: 6 Oct – 3 Nov 2026 · Blood Raiders invading Pochven · Sites: Crimson Gauntlet (Blood Raiders), Tetrimon Base (Order of St. Tetrimon) · Also: C3–C6 wormhole combat anomalies (Sleepers) · PvP check against the ships that really kill your hull (zKillboard)</div>
+<h1>Event, Wormhole Site &amp; PvP Fit Check</h1>
+<div class="v warn" style="font-size:13px;font-weight:600"><b>Important: the fit must be checked for each site.</b> A result only covers the site you select below. A fit that passes one site can die in another, so check the fit against every site you plan to run. To test whole wormhole classes in one go, tick C1 to C6 under the Correct my fit button.</div>
+<div class="mut">Current event: Crimson Harvest, 6 Oct – 3 Nov 2026 (Crimson Gauntlet, Tetrimon Base, Crimson Harvest Sanctuary, Criterion of Fitness) · C1–C6 wormhole combat anomalies (Sleepers) · PvP check against the ships that really kill your hull (zKillboard)</div>
 
 <div class="card"><h2>1. Paste your fit (EFT format) and press Calculate</h2>
 <textarea id="fit" placeholder="[Ship, Fit name]&#10;Low slot modules...&#10;&#10;Mid slot modules...&#10;&#10;High slot modules...&#10;&#10;Rigs...&#10;&#10;Drones x5&#10;&#10;Cargo / ammo x1000"></textarea>
@@ -42,7 +42,7 @@ label.m{display:flex;gap:6px;align-items:center;font-size:12px}
 <div class="card" id="verdictcard" style="display:none"><h2>3. Will it survive?</h2><div id="out"></div>
 <div class="row"><button id="fixbtn">Correct my fit</button> <button id="costbtn" class="sec">Cost effective</button> <span class="mut" id="fixnote">Rebuilds the tank and capacitor side of the fit until it survives every wave of the chosen site. Tries Tech II first, then faction, then deadspace, and recalculates every change. In PvP it aims for the best win rate, since no fit beats everything; there it stops at faction modules and may also upgrade drones, weapons and damage modules. Cost effective does the opposite for a fit that already passes: it swaps in cheaper modules for as long as every wave still passes.</span></div>
 <div class="row mut" id="scoperow">Correct my fit and Cost effective must also pass every site in:
-<label class="m"><input type="checkbox" id="sc3">C3</label><label class="m"><input type="checkbox" id="sc4">C4</label><label class="m"><input type="checkbox" id="sc5">C5</label><label class="m"><input type="checkbox" id="sc6">C6</label>
+<label class="m"><input type="checkbox" id="sc1">C1</label><label class="m"><input type="checkbox" id="sc2">C2</label><label class="m"><input type="checkbox" id="sc3">C3</label><label class="m"><input type="checkbox" id="sc4">C4</label><label class="m"><input type="checkbox" id="sc5">C5</label><label class="m"><input type="checkbox" id="sc6">C6</label>
 <span>(nothing ticked = only the site selected above)</span></div>
 <div id="fixout"></div></div>
 
@@ -54,11 +54,13 @@ label.m{display:flex;gap:6px;align-items:center;font-size:12px}
 <li><b>NPC stats</b> (damage, damage types, neuts, HP, resists) are the real values for these NPC ships from the same static data. <b>Which ships and how many spawn per room</b> comes from the EVE University wiki's 2023 write-up, the closest documented layout. How many of them shoot you at the same time is the main uncertainty, so it is a slider: 60% is my default guess, 100% is the worst case. Drifter / Rogue Drone / Triglavian rift escalations are not included.</li>
 <li><b>I am an Alpha pilot</b> button: the fit is calculated with the highest skill levels an Alpha clone can train instead of all skills at V, anything an Alpha cannot use is flagged, and Correct my fit swaps those items for ones an Alpha can use and only suggests modules an Alpha can fit. PvP opponents are still assumed to have all skills at V.</li>
 <li><b>PvP check</b> needs an internet connection: it asks zKillboard for the recent losses of your hull, finds the hulls that did most of the killing, and gives each one the fit it most typically flies (taken from that hull's own recent losses). Your fit then duels each of them with the same engine. It is paper numbers only: no range, speed, tracking, kiting, overheating, drugs, implants or fleet boosts, and it assumes both ships simply shoot until one dies. Losses only show fits that died, so "typical" means what people fly, not what wins. Most real kills are gangs, which is why the gang size and how long you last against one are shown separately.</li>
-<li><b>Wormhole sites (C3–C6)</b> use the Sleepers' real stats from ESI and the wave layouts on the EVE University wiki. Each wave is checked on its own; the hardest one is picked by default and the slider starts at 100%, because a Sleeper wave all shoots you. Spawns the wiki lists as "possible" are counted. Sentry towers are counted only in the first wave, so add margin if you leave them up. Capital escalation waves are not included. Remote repairs between Sleepers slow your clear time and are included in it.</li></ul></div>
+<li><b>Event sites</b> other than the two original Crimson Harvest ones come from <code>event-data.js</code>: NPC stats from ESI, wave layouts from the EVE University wiki, using the top of each "0–4" range. Triglavian damage spools up during a fight and that ramp is not modelled, so Criterion of Fitness is harder than shown the longer a wave lasts.</li>
+<li><b>Wormhole sites (C1–C6)</b> use the Sleepers' real stats from ESI and the wave layouts on the EVE University wiki. Each wave is checked on its own; the hardest one is picked by default and the slider starts at 100%, because a Sleeper wave all shoots you. Spawns the wiki lists as "possible" are counted. Sentry towers are counted only in the first wave, so add margin if you leave them up. Capital escalation waves are not included. Remote repairs between Sleepers slow your clear time and are included in it.</li></ul></div>
 
 <script src="eve-data.js"></script>
 <script src="wh-data.js"></script>
 <script src="alpha-data.js"></script>
+<script src="event-data.js"></script>
 <script>
 'use strict';
 const $=id=>document.getElementById(id);
@@ -250,7 +252,10 @@ function capSim(F,st,extraDrain,horizon=1500,dt=0.2){const Cmax=st.cap.max,tau=s
 // Every site is a list of waves. The event sites are one room; wormhole anomalies come from wh-data.js.
 const SITES={};
 if(EVE){for(const k in EVE.SITES)SITES[k]={name:EVE.SITES[k].name,grp:'Crimson Harvest',scale:60,waves:[EVE.SITES[k].ships]};
- const W=window.WH;if(W)for(const s of W.sites)SITES[s.k]={name:s.name,grp:s.cls+' wormhole',scale:100,waves:s.waves.map(w=>w.map(([i,c])=>Object.assign({cnt:c},W.npcs[i])))};}
+ const W=window.WH;if(W)for(const s of W.sites)SITES[s.k]={name:s.name,grp:s.cls+' wormhole',scale:100,waves:s.waves.map(w=>w.map(([i,c])=>Object.assign({cnt:c},W.npcs[i])))};
+ const V=window.EVENTS;if(V){const byName={};for(const k in EVE.SITES)for(const x of EVE.SITES[k].ships)byName[x.n]=x;for(const x of V.npcs)byName[x.n]=x;
+  for(const s of V.sites){const waves=s.waves.map(w=>w.filter(([n])=>byName[n]).map(([n,c])=>Object.assign({},byName[n],{cnt:c})));
+   if(waves.every(w=>w.length))SITES[s.k]={name:s.name,grp:s.grp,scale:s.scale,note:s.note,waves};else console.warn('event site skipped, unknown NPC:',s.name);}}}
 let WAVE_OV=null,SITE_OV=null,DEADLINE=Infinity;
 const curSite=()=>SITE_OV||$('site').value;
 const curWave=()=>WAVE_OV!==null?WAVE_OV:Math.min(+$('wave').value||0,SITES[curSite()].waves.length-1);
@@ -378,7 +383,7 @@ function fmtT(t){if(t===null||t===undefined)return'—';if(!isFinite(t))return'i
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function renderSite(){if(pvpPending()){$('site-data').innerHTML='<span class="mut">Paste a fit and press Calculate. The opponents are then loaded from zKillboard for your hull: the ships that most often kill it, each in its typical fit.</span>';return;}
  const pv=SITES[$('site').value].pvp,s={ships:curShips()},n=siteCounts($('site').value,false),k=1;
- $('site-data').innerHTML=`<b>${siteLabel()}</b> <span class="mut">${pv?'Stats of the typical fit this hull flies, worked out from its recent losses on zKillboard and calculated with all skills at V.':'NPC stats are real values from the game data. "At once" follows the slider above: the share of the room shooting you at the same time.'}</span>
+ $('site-data').innerHTML=`${SITES[$('site').value].note?`<div class="mut" style="margin-bottom:6px">${esc(SITES[$('site').value].note)}</div>`:''}<b>${siteLabel()}</b> <span class="mut">${pv?'Stats of the typical fit this hull flies, worked out from its recent losses on zKillboard and calculated with all skills at V.':'NPC stats are real values from the game data. "At once" follows the slider above: the share of the room shooting you at the same time.'}</span>
  <div class="tw"><table><tr><th>Ship</th><th>Class</th><th class="n">Max</th><th class="n">At once</th><th class="n">DPS each</th><th>Dmg EM/Th/Kin/Exp</th><th class="n">HP (S/A/H)</th><th>EWAR</th></tr>`+
  s.ships.map((x,i)=>{const d=x.tur.map((v,j)=>v+x.mis[j]),t=d.reduce((a,b)=>a+b,0);return`<tr><td>${x.n}</td><td>${x.c}</td><td class="n">${x.cnt}</td><td class="n">${fmt(n[i],1)}</td><td class="n">${fmt(t*k)}</td><td>${t?d.map(v=>Math.round(v/t*100)).join('/'):'—'}</td><td class="n">${x.hp.map(h=>fmt(h)).join(' / ')}</td><td>${x.ew.join(', ')||'—'}</td></tr>`;}).join('')+'</table></div>'+(pv?s.ships.map(x=>`<details><summary class="mut">Typical ${esc(x.n)} fit used for this matchup</summary><textarea readonly>${esc(x.eft)}</textarea></details>`).join(''):'');}
 async function run(){if(!EVE){$('status').innerHTML='<span class="btxt">eve-data.js is missing. Keep it in the same folder as this page.</span>';return;}
@@ -449,7 +454,7 @@ function cloneFit(f){return{ship:f.ship,name:f.name,shipId:f.shipId,items:f.item
 function capChargeFor(modId){for(const n of CAPCH){const id=NAME['cap booster '+n];if(id&&chargeFits({base:TY[modId][2]},id))return id;}return 0;}
 function freeCargo(fit){let used=0;for(const it of fit.items)if(it.kind==='cargo'&&it.id)used+=(TY[it.id][2][161]||0)*(it.qty||1);return(TY[fit.shipId][2][38]||0)-used;}
 // Everything a fit is judged against: each wave of the selected site and, when scoped, of every site in the ticked wormhole classes.
-const scopeClasses=()=>SITES[$('site').value].pvp?[]:[3,4,5,6].filter(c=>$('sc'+c).checked);
+const scopeClasses=()=>SITES[$('site').value].pvp?[]:[1,2,3,4,5,6].filter(c=>$('sc'+c).checked);
 function targets(scoped){const cur=$('site').value,keys=[cur],cls=scoped?scopeClasses():[];
  for(const k in SITES){const m=/^C(\d) wormhole$/.exec(SITES[k].grp);if(m&&k!==cur&&cls.includes(+m[1]))keys.push(k);}
  const out=[];for(const k of keys)SITES[k].waves.forEach((w,i)=>out.push({k,w:i,name:keys.length>1?`${SITES[k].name} wave ${i+1}`:wn(i,SITES[k])}));return out;}
@@ -595,7 +600,7 @@ $('calc').onclick=run;$('fixbtn').onclick=correct;$('costbtn').onclick=cheapen;
  if(!window.ALPHA){b.checked=false;btn.disabled=true;btn.title='alpha-data.js is missing. Keep it in the same folder as this page.';}show();
  b.onchange=()=>{try{localStorage.setItem('alpha',b.checked?'1':'0');}catch(e){}show();$('fixout').innerHTML='';if(FIT&&!pvpPending())recompute();};
  btn.onclick=()=>{b.checked=!b.checked;b.onchange();};}
-for(const c of[3,4,5,6]){const b=$('sc'+c);try{b.checked=localStorage.getItem('sc'+c)==='1';}catch(e){}b.onchange=()=>{try{localStorage.setItem('sc'+c,b.checked?'1':'0');}catch(e){}$('fixout').innerHTML='';};}
+for(const c of[1,2,3,4,5,6]){const b=$('sc'+c);try{b.checked=localStorage.getItem('sc'+c)==='1';}catch(e){}b.onchange=()=>{try{localStorage.setItem('sc'+c,b.checked?'1':'0');}catch(e){}$('fixout').innerHTML='';};}
 $('clear').onclick=()=>{$('fit').value='';FIT=LAST=null;ACTIVE={};$('modlist').innerHTML='';$('status').textContent='';$('statscard').style.display='none';$('verdictcard').style.display='none';$('fixout').innerHTML='';$('fit').focus();};
 function fillWaves(){$('scoperow').style.opacity=SITES[$('site').value].pvp?0.4:1;$('scoperow').title=SITES[$('site').value].pvp?'Not used for PvP: the matchups are the whole check':'';const s=SITES[$('site').value],raw=s.waves.map(rawOf),hard=s.pvp?0:raw.indexOf(Math.max(...raw));
  $('wave').innerHTML=s.waves.map((w,i)=>`<option value="${i}"${i===hard?' selected':''}>${s.pvp?s.waveNames[i]:`Wave ${i+1}`} · ${fmt(raw[i])} DPS${!s.pvp&&i===hard?' (hardest)':''}</option>`).join('');

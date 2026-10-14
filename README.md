@@ -1,12 +1,12 @@
-# Crimson Harvest, Wormhole Site & PvP Fit Check
+# Event, Wormhole Site & PvP Fit Check
 
-> **Important: the fit must be checked for each site.** A result only covers the site you selected. A fit that passes one site can die in another, so check the fit against every site you plan to run. To test whole wormhole classes in one go, tick C3 to C6 under the Correct my fit button.
+> **Important: the fit must be checked for each site.** A result only covers the site you selected. A fit that passes one site can die in another, so check the fit against every site you plan to run. To test whole wormhole classes in one go, tick C1 to C6 under the Correct my fit button.
 
-Paste an EVE Online fit (EFT format) and see whether it is likely to survive the Crimson Harvest event sites (Tetrimon Base and Crimson Gauntlet), the C3–C6 wormhole combat anomalies, or PvP against the ships that most often kill your hull.
+Paste an EVE Online fit (EFT format) and see whether it is likely to survive the current EVE event's combat sites (Crimson Harvest: Crimson Gauntlet, Tetrimon Base, Crimson Harvest Sanctuary, Criterion of Fitness), the C1–C6 wormhole combat anomalies, or PvP against the ships that most often kill your hull.
 
 **Use it:** https://bigmos.github.io/crimson-harvest-fit-check/
 
-Or download `crimson-checker.html`, `eve-data.js`, `wh-data.js` and `alpha-data.js` into the same folder and open the HTML file. It runs entirely in the browser. Only the PvP check needs an internet connection.
+Or download `crimson-checker.html`, `eve-data.js`, `wh-data.js`, `event-data.js` and `alpha-data.js` into the same folder and open the HTML file. It runs entirely in the browser. Only the PvP check needs an internet connection.
 
 ## What it does
 
@@ -14,11 +14,19 @@ Or download `crimson-checker.html`, `eve-data.js`, `wh-data.js` and `alpha-data.
 - Compares that against the event NPCs' real damage, damage types, neuts, HP and resists.
 - "Correct my fit" rebuilds the tank and capacitor side of any pasted fit until it survives every wave of the chosen site. It swaps modules and rigs, fills empty slots, and recalculates every change. It tries Tech II first, then faction, then deadspace, keeps the tank type the fit already has, and never touches weapons or drones. If the hull cannot pass, it says so and shows the best fit it found.
 - "Cost effective" takes a fit that already passes and swaps each module for a cheaper one of the same kind, biggest saving first, for as long as every wave still passes. It needs an internet connection for prices (ESI average prices).
-- Both buttons normally work on the selected site. Tick C3, C4, C5 or C6 under them and the fit must also pass every wave of every site in those classes, so one fit can be corrected or made cheaper for, say, all C4 and C5 sites at once.
+- Both buttons normally work on the selected site. Tick any of C1 to C6 under them and the fit must also pass every wave of every site in those classes, so one fit can be corrected or made cheaper for, say, all C4 and C5 sites at once.
 
-## Wormhole sites (C3–C6)
+## Event sites
 
-The Site dropdown also lists the four combat anomalies of each wormhole class from C3 to C6. Pick one and a Wave dropdown appears; the hardest wave is selected by default and the slider starts at 100%, since a whole Sleeper wave shoots you.
+The Site dropdown lists the combat sites of the current event. Crimson Gauntlet and Tetrimon Base come from `eve-data.js`; Crimson Harvest Sanctuary and Criterion of Fitness come from `event-data.js`, built by `python tools/build_events.py` from ESI (needs internet, no SDE download). Wave layouts follow the EVE University wiki, using the top of each "0–4" range.
+
+- Criterion of Fitness is a solo site, so the slider starts at 100%. Triglavian damage spools up during a fight and that ramp is not modelled. The boss shown is the Fitness 15 one.
+- Not included, because the wiki does not list their NPCs yet: Tetrimon Garrison and Hollow Outbreak sites.
+- **Adding a future event:** add the NPC type ids and the site layouts to `tools/build_events.py` and run it. Each site needs a key, the dropdown group (the event name), a name, the default share of the room shooting you, a note, and its waves as `(NPC name, count)` pairs.
+
+## Wormhole sites (C1–C6)
+
+The Site dropdown also lists the four combat anomalies of each wormhole class from C1 to C6. Pick one and a Wave dropdown appears; the hardest wave is selected by default and the slider starts at 100%, since a whole Sleeper wave shoots you.
 
 - Sleeper stats are the real values from ESI; wave layouts follow the EVE University wiki. Spawns the wiki lists as "possible" are counted.
 - Sentry towers are counted only in the first wave. Capital escalation waves are not included.

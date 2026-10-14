@@ -1,4 +1,4 @@
-"""Build wh-data.js (C3-C6 wormhole combat anomalies) for crimson-checker.html.
+"""Build wh-data.js (C1-C6 wormhole combat anomalies) for crimson-checker.html.
 
 NPC stats come from ESI, so this needs no SDE download. Wave layouts follow the EVE University wiki.
 Capital escalation waves are left out: they only spawn when a capital ship is on grid."""
@@ -16,20 +16,31 @@ def get(p):
 def many(f,ids):
     with cf.ThreadPoolExecutor(16) as ex: return list(ex.map(f,ids))
 
-# Sleepers by name. C3/C4 and C5/C6 each share one set of hulls.
-NPC={'Emergent Defender':30212,'Emergent Preserver':30214,'Emergent Upholder':30213,
+# Sleepers by name. C1/C2, C3/C4 and C5/C6 each share one set of hulls.
+NPC={'Emergent Patroller':30209,'Emergent Watchman':30210,'Awakened Escort':30202,'Awakened Patroller':30200,'Awakened Watchman':30201,
+     'Sleepless Escort':30190,'Sleepless Outguard':30191,'Sleepless Patroller':30188,'Sleepless Watchman':30189,
+     'Emergent Defender':30212,'Emergent Preserver':30214,'Emergent Upholder':30213,
      'Awakened Defender':30203,'Awakened Preserver':30205,'Awakened Upholder':30204,
      'Sleepless Defender':30192,'Sleepless Preserver':30194,'Sleepless Upholder':30193,'Sleepless Safeguard':30195,
      'Emergent Escort':30211,'Emergent Sentinel':30215,'Emergent Keeper':30216,'Emergent Warden':30217,
      'Awakened Sentinel':30206,'Awakened Keeper':30207,'Awakened Warden':30208,
      'Sleepless Sentinel':30196,'Sleepless Keeper':30197,'Sleepless Warden':30198,'Sleepless Guardian':30199}
-TOWERS=('Wakeful Sentry Tower','Restless Sentry Tower')
+TOWERS=('Vigilant Sentry Tower','Wakeful Sentry Tower','Restless Sentry Tower')
 TOWER_GROUPS=(99,383,495)
 ED,EP,EU,AD,AP,AU,SD,SP,SU,SS='Emergent Defender','Emergent Preserver','Emergent Upholder','Awakened Defender','Awakened Preserver','Awakened Upholder','Sleepless Defender','Sleepless Preserver','Sleepless Upholder','Sleepless Safeguard'
 EE,ES,EK,EW,AS,AK,AW,LS,LK,LW,LG='Emergent Escort','Emergent Sentinel','Emergent Keeper','Emergent Warden','Awakened Sentinel','Awakened Keeper','Awakened Warden','Sleepless Sentinel','Sleepless Keeper','Sleepless Warden','Sleepless Guardian'
-WT,RT=TOWERS
+VT,WT,RT=TOWERS
+EP,EWa,AE,AP2,AWa,SE,SO,SP2,SWa='Emergent Patroller','Emergent Watchman','Awakened Escort','Awakened Patroller','Awakened Watchman','Sleepless Escort','Sleepless Outguard','Sleepless Patroller','Sleepless Watchman'
 # (key, class, name, waves). Spawns the wiki marks as "possible" are included: this is the worst case.
 SITES=[
+ ('c1amb','C1','Perimeter Ambush Point',[[(VT,2),(EE,1),(AE,1)],[(EP,3),(AE,2)],[(AE,2),(AP2,2)]]),
+ ('c1cmp','C1','Perimeter Camp',[[(VT,2),(EP,4),(EWa,2)],[(EP,5),(EWa,3),(AP2,1)],[(EP,2),(AP2,2),(AWa,1)]]),
+ ('c1pcn','C1','Phase Catalyst Node',[[(VT,4),(EE,2),(EWa,4)],[(AE,1),(AP2,2)],[(EP,6),(EWa,3)]]),
+ ('c1lin','C1','The Line',[[(EP,4),(EWa,3),(AWa,1)],[(EE,3),(AP2,2)],[(AWa,5)]]),
+ ('c2chk','C2','Perimeter Checkpoint',[[(VT,2),(EP,2),(AP2,3)],[(AE,2),(AP2,2)],[(EP,3),(SP2,1)]]),
+ ('c2hng','C2','Perimeter Hangar',[[(EWa,2),(AP2,3)],[(AE,2),(SWa,1)],[(AE,2),(SE,1)]]),
+ ('c2rui','C2','The Ruins of Enclave Cohort 27',[[(EP,6),(SP2,1)],[(EWa,1),(AP2,5)],[(SE,1)]]),
+ ('c2dat','C2','Sleeper Data Sanctuary',[[(VT,3),(EP,3),(AE,2)],[(EE,4),(SE,1)],[(SO,1)]]),
  ('c3ffs','C3','Fortification Frontier Stronghold',[[(ED,2),(AD,2)],[(AD,2),(AU,2)],[(AD,2),(AP,1),(AU,1),(SU,1)]]),
  ('c3ofs','C3','Outpost Frontier Stronghold',[[(WT,3),(SD,1)],[(AD,4)],[(ED,4),(SD,2)]]),
  ('c3sol','C3','Solar Cell',[[(EP,1),(AU,1),(SD,1)],[(ED,2),(EU,2),(AD,3),(AU,1)],[(AD,2),(SD,1),(SP,1)]]),

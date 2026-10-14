@@ -1,5 +1,16 @@
 # Changelog
 
+## 14 October 2026
+
+### Added
+- **C1 and C2 wormhole sites**: Perimeter Ambush Point, Perimeter Camp, Phase Catalyst Node, The Line (C1); Perimeter Checkpoint, Perimeter Hangar, The Ruins of Enclave Cohort 27, Sleeper Data Sanctuary (C2). C1 and C2 tick boxes were added for Correct my fit and Cost effective.
+- **More Crimson Harvest sites**: Crimson Harvest Sanctuary (Level 5 escalation) and Criterion of Fitness (solo Triglavian site).
+- **Future events**: event sites now come from `event-data.js`, built by `tools/build_events.py`. A new event is added by listing its NPCs and wave layouts there.
+- Event sites can carry a short note, shown above the site table.
+
+### Changed
+- Title changed to **Event, Wormhole Site & PvP Fit Check**.
+
 ## 13 October 2026
 
 ### Added
